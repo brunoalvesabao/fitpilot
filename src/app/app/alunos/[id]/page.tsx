@@ -4,13 +4,7 @@ import { ChevronLeft, Pencil, MessageCircle, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/avatar";
 import { StatTile } from "@/components/stat-tile";
-import {
-  formatCurrencyBRL,
-  formatDateBR,
-  planoLabel,
-  whatsappHref,
-  telHref,
-} from "@/lib/format";
+import { formatCurrencyBRL, formatDateBR, whatsappHref, telHref } from "@/lib/format";
 import { DesativarAlunoButton } from "../_components/desativar-aluno-button";
 import type { Aluno } from "@/types/database";
 
@@ -125,7 +119,7 @@ export default async function AlunoFichaPage({
 
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
         <section className="flex flex-col items-center gap-3 rounded-card border border-border bg-surface p-6 text-center">
-          <Avatar nome={aluno.nome} size="lg" />
+          <Avatar nome={aluno.nome} fotoUrl={aluno.foto_url} size="lg" />
           <div>
             <p className="text-lg font-semibold">{aluno.nome}</p>
             {aluno.telefone && (
@@ -157,7 +151,7 @@ export default async function AlunoFichaPage({
         </section>
 
         <section className="flex flex-col gap-2 rounded-card border border-border bg-surface p-4">
-          <PlanoRow label="Plano" value={planoLabel(aluno.plano_tipo)} />
+          <PlanoRow label="Plano" value="Mensal" />
           <PlanoRow label="Valor" value={formatCurrencyBRL(aluno.valor_mensal)} />
           <PlanoRow
             label="Aulas por mês"
@@ -167,7 +161,7 @@ export default async function AlunoFichaPage({
             label="Vencimento"
             value={aluno.dia_vencimento != null ? `Dia ${aluno.dia_vencimento}` : "-"}
           />
-          <PlanoRow label="Aluno desde" value={formatDateBR(aluno.created_at)} />
+          <PlanoRow label="Aluno desde" value={formatDateBR(aluno.criado_em)} />
         </section>
 
         <div className="flex gap-2">

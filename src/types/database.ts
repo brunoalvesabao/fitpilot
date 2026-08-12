@@ -21,8 +21,6 @@ export type StatusAluno =
   | "ex_aluno"
   | "lead";
 
-export type PlanoTipo = "mensal" | "pacote" | "avulso";
-
 // NOTE: these are `type` aliases, not `interface` declarations, on purpose —
 // interfaces don't structurally satisfy the `Record<string, unknown>` shape
 // that the Supabase query builder generics expect for Row/Insert/Update.
@@ -42,27 +40,22 @@ export type Aluno = {
   profissional_id: UUID;
   nome: string;
   telefone: string | null;
-  status: StatusAluno;
-  plano_tipo: PlanoTipo | null;
+  foto_url: string | null;
   valor_mensal: number | null;
-  aulas_por_mes: number | null;
   dia_vencimento: number | null; // 1-31
+  aulas_por_mes: number | null;
+  status: StatusAluno;
   observacoes: string | null;
   ativo: boolean; // soft delete flag
-  created_at: string;
-  updated_at: string;
+  criado_em: string;
 };
 
 export type HorarioFixo = {
   id: UUID;
-  profissional_id: UUID;
   aluno_id: UUID;
   dia_semana: DiaSemana;
-  hora_inicio: string; // "HH:mm:ss"
-  hora_fim: string; // "HH:mm:ss"
-  ativo: boolean;
-  created_at: string;
-  updated_at: string;
+  hora: string; // "HH:mm:ss"
+  local: string | null;
 };
 
 export type Agendamento = {
@@ -153,8 +146,7 @@ export type Database = {
       };
       horario_fixo: {
         Row: HorarioFixo;
-        Insert: Partial<HorarioFixo> &
-          Pick<HorarioFixo, "profissional_id" | "aluno_id" | "dia_semana" | "hora_inicio" | "hora_fim">;
+        Insert: Partial<HorarioFixo> & Pick<HorarioFixo, "aluno_id" | "dia_semana" | "hora">;
         Update: Partial<HorarioFixo>;
         Relationships: [];
       };

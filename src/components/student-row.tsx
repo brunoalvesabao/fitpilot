@@ -2,13 +2,15 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { StatusPill, Pill } from "@/components/status-pill";
-import { formatCurrencyBRL, planoLabel } from "@/lib/format";
+import { formatCurrencyBRL } from "@/lib/format";
 import type { Aluno } from "@/types/database";
 
 function secondaryLine(aluno: Aluno): string {
-  if (!aluno.plano_tipo) return "Sem plano definido";
+  if (aluno.valor_mensal == null && aluno.dia_vencimento == null && aluno.aulas_por_mes == null) {
+    return "Sem plano definido";
+  }
 
-  let line = planoLabel(aluno.plano_tipo);
+  let line = "Mensal";
   if (aluno.valor_mensal != null) {
     line += ` ${formatCurrencyBRL(aluno.valor_mensal)}`;
   }
@@ -32,7 +34,7 @@ export function StudentRow({
       href={`/app/alunos/${aluno.id}`}
       className="flex min-h-touch items-center gap-3 border-b border-border px-4 py-3"
     >
-      <Avatar nome={aluno.nome} />
+      <Avatar nome={aluno.nome} fotoUrl={aluno.foto_url} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-base font-semibold">{aluno.nome}</p>
         <p className="truncate text-sm text-fg-muted">{secondaryLine(aluno)}</p>

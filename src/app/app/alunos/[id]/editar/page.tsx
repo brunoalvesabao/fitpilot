@@ -33,11 +33,7 @@ export default async function EditarAlunoPage({
       .eq("id", id)
       .eq("profissional_id", user.id)
       .maybeSingle(),
-    supabase
-      .from("horario_fixo")
-      .select("*")
-      .eq("aluno_id", id)
-      .eq("profissional_id", user.id),
+    supabase.from("horario_fixo").select("*").eq("aluno_id", id),
   ]);
 
   if (alunoResult.error) {

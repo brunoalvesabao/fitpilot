@@ -3,10 +3,9 @@
 import { useActionState, useMemo, useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
-import { SegmentedControl } from "@/components/segmented-control";
 import { maskPhoneBR } from "@/lib/format";
 import { emptyFormState, type FormState } from "../form-state";
-import type { Aluno, DiaSemana, HorarioFixo, PlanoTipo } from "@/types/database";
+import type { Aluno, DiaSemana, HorarioFixo } from "@/types/database";
 
 const DIAS: { dia: DiaSemana; letra: string; nomeCompleto: string }[] = [
   { dia: 1, letra: "S", nomeCompleto: "Segunda-feira" },
@@ -16,12 +15,6 @@ const DIAS: { dia: DiaSemana; letra: string; nomeCompleto: string }[] = [
   { dia: 5, letra: "S", nomeCompleto: "Sexta-feira" },
   { dia: 6, letra: "S", nomeCompleto: "Sábado" },
   { dia: 0, letra: "D", nomeCompleto: "Domingo" },
-];
-
-const planoOptions: { value: PlanoTipo; label: string }[] = [
-  { value: "mensal", label: "Mensal" },
-  { value: "pacote", label: "Pacote" },
-  { value: "avulso", label: "Avulso" },
 ];
 
 const inputClasses =
@@ -46,9 +39,6 @@ export function AlunoForm({
   const [telefone, setTelefone] = useState(
     initialAluno?.telefone ? maskPhoneBR(initialAluno.telefone) : "",
   );
-  const [planoTipo, setPlanoTipo] = useState<PlanoTipo | "">(
-    initialAluno?.plano_tipo ?? "",
-  );
   const [valorMensal, setValorMensal] = useState(
     initialAluno?.valor_mensal != null ? String(initialAluno.valor_mensal) : "",
   );
@@ -63,7 +53,7 @@ export function AlunoForm({
   const [horarios, setHorarios] = useState<Partial<Record<DiaSemana, string>>>(() => {
     const initial: Partial<Record<DiaSemana, string>> = {};
     for (const horario of initialHorarios) {
-      initial[horario.dia_semana] = horario.hora_inicio.slice(0, 5);
+      initial[horario.dia_semana] = horario.hora.slice(0, 5);
     }
     return initial;
   });
@@ -88,7 +78,7 @@ export function AlunoForm({
     () =>
       DIAS.filter(({ dia }) => horarios[dia] != null).map(({ dia }) => ({
         dia_semana: dia,
-        hora_inicio: horarios[dia]!,
+        hora: horarios[dia]!,
       })),
     [horarios],
   );
@@ -136,7 +126,6 @@ export function AlunoForm({
           <p className="text-sm text-red">{state.formError}</p>
         )}
 
-        <input type="hidden" name="plano_tipo" value={planoTipo} />
         <input type="hidden" name="horarios" value={JSON.stringify(horariosPayload)} />
 
         <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">
@@ -177,12 +166,10 @@ export function AlunoForm({
 
         <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">
           <div className="flex flex-col gap-1.5">
-            <span className="text-sm text-fg-muted">Tipo de plano</span>
-            <SegmentedControl
-              options={planoOptions}
-              value={planoTipo || "mensal"}
-              onChange={setPlanoTipo}
-            />
+            <span className="text-sm text-fg-muted">Plano</span>
+            <p className="h-touch flex items-center rounded-card border border-border bg-bg px-4 text-fg">
+              Mensal
+            </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
