@@ -50,10 +50,15 @@ export function AlunoForm({
   );
   const [observacoes, setObservacoes] = useState(initialAluno?.observacoes ?? "");
 
-  const [horarios, setHorarios] = useState<Partial<Record<DiaSemana, string>>>(() => {
-    const initial: Partial<Record<DiaSemana, string>> = {};
+  type HorarioDia = { hora: string; local: string };
+
+  const [horarios, setHorarios] = useState<Partial<Record<DiaSemana, HorarioDia>>>(() => {
+    const initial: Partial<Record<DiaSemana, HorarioDia>> = {};
     for (const horario of initialHorarios) {
-      initial[horario.dia_semana] = horario.hora.slice(0, 5);
+      initial[horario.dia_semana] = {
+        hora: horario.hora.slice(0, 5),
+        local: horario.local ?? "",
+      };
     }
     return initial;
   });
@@ -64,21 +69,26 @@ export function AlunoForm({
       if (next[dia] != null) {
         delete next[dia];
       } else {
-        next[dia] = "06:00";
+        next[dia] = { hora: "06:00", local: "" };
       }
       return next;
     });
   }
 
   function setHoraForDia(dia: DiaSemana, hora: string) {
-    setHorarios((prev) => ({ ...prev, [dia]: hora }));
+    setHorarios((prev) => ({ ...prev, [dia]: { ...prev[dia]!, hora } }));
+  }
+
+  function setLocalForDia(dia: DiaSemana, local: string) {
+    setHorarios((prev) => ({ ...prev, [dia]: { ...prev[dia]!, local } }));
   }
 
   const horariosPayload = useMemo(
     () =>
       DIAS.filter(({ dia }) => horarios[dia] != null).map(({ dia }) => ({
         dia_semana: dia,
-        hora: horarios[dia]!,
+        hora: horarios[dia]!.hora,
+        local: horarios[dia]!.local.trim() || null,
       })),
     [horarios],
   );
@@ -259,15 +269,24 @@ export function AlunoForm({
           </div>
 
           {horariosPayload.length > 0 && (
-            <div className="flex flex-col gap-2 pt-1">
+            <div className="flex flex-col gap-3 pt-1">
               {DIAS.filter(({ dia }) => horarios[dia] != null).map(({ dia, nomeCompleto }) => (
-                <div key={dia} className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-fg-muted">{nomeCompleto}</span>
+                <div key={dia} className="flex flex-col gap-1.5 rounded-card border border-border bg-bg p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{nomeCompleto}</span>
+                    <input
+                      type="time"
+                      value={horarios[dia]!.hora}
+                      onChange={(event) => setHoraForDia(dia, event.target.value)}
+                      className="h-touch rounded-card border border-border bg-surface px-3 text-fg"
+                    />
+                  </div>
                   <input
-                    type="time"
-                    value={horarios[dia]}
-                    onChange={(event) => setHoraForDia(dia, event.target.value)}
-                    className="h-touch rounded-card border border-border bg-bg px-3 text-fg"
+                    type="text"
+                    placeholder="Academia, condomínio, online..."
+                    value={horarios[dia]!.local}
+                    onChange={(event) => setLocalForDia(dia, event.target.value)}
+                    className="h-touch rounded-card border border-border bg-surface px-3 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               ))}

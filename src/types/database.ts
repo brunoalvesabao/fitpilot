@@ -11,7 +11,7 @@ export type StatusAgendamento =
   | "falta"
   | "cancelado_com_aviso";
 
-export type StatusPagamento = "pendente" | "pago" | "atrasado";
+export type MetodoPagamento = "pix" | "dinheiro" | "cartao" | "transferencia" | "outro";
 
 export type StatusAluno =
   | "ativo"
@@ -73,14 +73,11 @@ export type Pagamento = {
   id: UUID;
   profissional_id: UUID;
   aluno_id: UUID;
+  competencia: string; // "YYYY-MM-DD", always the 1st of the reference month
   valor: number;
-  referencia_mes: string; // "YYYY-MM"
-  data_vencimento: string;
-  data_pagamento: string | null;
-  status: StatusPagamento;
-  forma_pagamento: string | null;
-  created_at: string;
-  updated_at: string;
+  data_pagamento: string | null; // "YYYY-MM-DD", null while unpaid
+  metodo: MetodoPagamento | null;
+  criado_em: string;
 };
 
 export type CreditoReposicao = {
@@ -154,7 +151,7 @@ export type Database = {
       pagamento: {
         Row: Pagamento;
         Insert: Partial<Pagamento> &
-          Pick<Pagamento, "profissional_id" | "aluno_id" | "valor" | "referencia_mes" | "data_vencimento">;
+          Pick<Pagamento, "profissional_id" | "aluno_id" | "competencia" | "valor">;
         Update: Partial<Pagamento>;
         Relationships: [];
       };

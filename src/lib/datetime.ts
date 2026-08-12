@@ -124,31 +124,3 @@ export function greeting(date: Date): string {
 export function firstName(nomeCompleto: string): string {
   return nomeCompleto.trim().split(/\s+/)[0] ?? nomeCompleto;
 }
-
-/** Days between two Y/M/D triples, ignoring time-of-day. */
-export function daysBetweenDates(
-  a: { year: number; month: number; day: number },
-  b: { year: number; month: number; day: number },
-): number {
-  const msPerDay = 24 * 60 * 60 * 1000;
-  return Math.round(
-    (Date.UTC(b.year, b.month - 1, b.day) - Date.UTC(a.year, a.month - 1, a.day)) / msPerDay,
-  );
-}
-
-/** Most recent occurrence of `diaVencimento` on-or-before `today`, as a Y/M/D triple. */
-export function lastOccurrenceOfDay(
-  diaVencimento: number,
-  today: { year: number; month: number; day: number },
-): { year: number; month: number; day: number } {
-  if (diaVencimento <= today.day) {
-    return { year: today.year, month: today.month, day: diaVencimento };
-  }
-  const prevMonthDate = new Date(Date.UTC(today.year, today.month - 1, 1));
-  prevMonthDate.setUTCMonth(prevMonthDate.getUTCMonth() - 1);
-  return {
-    year: prevMonthDate.getUTCFullYear(),
-    month: prevMonthDate.getUTCMonth() + 1,
-    day: diaVencimento,
-  };
-}

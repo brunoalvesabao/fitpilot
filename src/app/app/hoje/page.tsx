@@ -13,8 +13,6 @@ import {
   startOfSpMonth,
   spParts,
   spDayKey,
-  lastOccurrenceOfDay,
-  daysBetweenDates,
 } from "@/lib/datetime";
 import { formatCurrencyBRL, planoResumo } from "@/lib/format";
 import type { Aluno } from "@/types/database";
@@ -43,7 +41,7 @@ export default async function HojePage() {
   const monthStart = startOfSpMonth(now, 0);
   const monthEnd = startOfSpMonth(now, 1);
   const today = spParts(now);
-  const referenciaMes = `${today.year}-${String(today.month).padStart(2, "0")}`;
+  const competenciaAtual = `${today.year}-${String(today.month).padStart(2, "0")}-01`;
 
   const [profissionalResult, aulasHojeResult, faltasMesResult, alunosResult, sessoesResult] =
     await Promise.all([
@@ -75,39 +73,36 @@ export default async function HojePage() {
   const alunos = (alunosResult.data ?? []) as Aluno[];
   const alunosPorId = new Map(alunos.map((a) => [a.id, a]));
 
-  const alunosVencendoHojeIds = alunos
-    .filter((a) => a.dia_vencimento === today.day)
-    .map((a) => a.id);
+  // Candidates whose due date has arrived this month (today or earlier) —
+  // covers both "vencendo hoje" and "em atraso".
+  const candidatosCobranca = alunos.filter(
+    (a) => a.dia_vencimento != null && a.dia_vencimento <= today.day,
+  );
 
-  let aReceberHoje = 0;
-  if (alunosVencendoHojeIds.length > 0) {
+  let pagosNaCompetencia = new Set<string>();
+  if (candidatosCobranca.length > 0) {
     const { data: pagamentos } = await supabase
       .from("pagamento")
       .select("aluno_id")
       .eq("profissional_id", user.id)
-      .eq("referencia_mes", referenciaMes)
-      .in("aluno_id", alunosVencendoHojeIds);
+      .eq("competencia", competenciaAtual)
+      .not("data_pagamento", "is", null)
+      .in(
+        "aluno_id",
+        candidatosCobranca.map((a) => a.id),
+      );
 
-    const jaPagosOuLancados = new Set((pagamentos ?? []).map((p) => p.aluno_id));
-    for (const alunoId of alunosVencendoHojeIds) {
-      if (!jaPagosOuLancados.has(alunoId)) {
-        aReceberHoje += alunosPorId.get(alunoId)?.valor_mensal ?? 0;
-      }
-    }
+    pagosNaCompetencia = new Set((pagamentos ?? []).map((p) => p.aluno_id));
   }
 
-  const vencendoHoje = alunos.filter(
-    (a) => a.status === "vencendo" && a.dia_vencimento === today.day,
+  const vencendoHoje = candidatosCobranca.filter(
+    (a) => a.dia_vencimento === today.day && !pagosNaCompetencia.has(a.id),
   );
-  const inadimplentes = alunos
-    .filter((a) => a.status === "inadimplente")
-    .map((a) => {
-      const diasAtraso =
-        a.dia_vencimento != null
-          ? daysBetweenDates(lastOccurrenceOfDay(a.dia_vencimento, today), today)
-          : null;
-      return { aluno: a, diasAtraso };
-    });
+  const inadimplentes = candidatosCobranca
+    .filter((a) => a.dia_vencimento! < today.day && !pagosNaCompetencia.has(a.id))
+    .map((a) => ({ aluno: a, diasAtraso: today.day - a.dia_vencimento! }));
+
+  const aReceberHoje = vencendoHoje.reduce((sum, a) => sum + (a.valor_mensal ?? 0), 0);
 
   const sessoes: SessaoDia[] = (sessoesResult.data ?? []).map((s) => {
     const aluno = alunosPorId.get(s.aluno_id);
@@ -166,9 +161,7 @@ export default async function HojePage() {
                 className="flex min-h-touch items-center gap-3 border-b border-border bg-surface px-4 py-3 last:border-b-0"
               >
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{aluno.nome}</span>
-                <Pill color="red">
-                  {diasAtraso != null ? `${diasAtraso} dias em atraso` : "Em atraso"}
-                </Pill>
+                <Pill color="red">{diasAtraso} dias em atraso</Pill>
                 <ChevronRight className="size-4 shrink-0 text-fg-faint" aria-hidden />
               </Link>
             ))}

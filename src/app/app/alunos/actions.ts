@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { DiaSemana } from "@/types/database";
 import type { FormState } from "./form-state";
 
-type HorarioInput = { dia_semana: DiaSemana; hora: string };
+type HorarioInput = { dia_semana: DiaSemana; hora: string; local: string | null };
 
 function parseAlunoForm(formData: FormData) {
   const nome = String(formData.get("nome") ?? "").trim();
@@ -89,6 +89,7 @@ async function saveHorarios(alunoId: string, horarios: HorarioInput[]) {
     aluno_id: alunoId,
     dia_semana: horario.dia_semana,
     hora: `${horario.hora}:00`,
+    local: horario.local,
   }));
 
   await supabase.from("horario_fixo").insert(rows);
