@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronLeft, Pencil, MessageCircle, Phone } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { MessageCircle, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/avatar";
 import { StatTile } from "@/components/stat-tile";
+import { statusBarColor } from "@/components/session-row";
 import { formatCurrencyBRL, formatDateBR, whatsappHref, telHref } from "@/lib/format";
-import { startOfSpMonth } from "@/lib/datetime";
+import { spParts, startOfSpMonth } from "@/lib/datetime";
 import { DesativarAlunoButton } from "../_components/desativar-aluno-button";
-import type { Aluno } from "@/types/database";
+import { UsarReposicaoButton } from "../_components/usar-reposicao-button";
+import type { Aluno, StatusAgendamento } from "@/types/database";
+
+const HISTORICO_PAGE_SIZE = 10;
 
 function currentMonthRange() {
   const now = new Date();
@@ -17,12 +22,29 @@ function currentMonthRange() {
   };
 }
 
+function formatDataHoraCurta(iso: string): string {
+  const { day, month, hour, minute } = spParts(new Date(iso));
+  return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")} às ${String(
+    hour,
+  ).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
+const HISTORICO_STATUS_LABEL: Record<StatusAgendamento, string> = {
+  agendado: "Agendado",
+  realizada: "Realizada",
+  falta: "Falta",
+  cancelado_com_aviso: "Cancelado com aviso",
+};
+
 export default async function AlunoFichaPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ historico?: string }>;
 }) {
   const { id } = await params;
+  const { historico } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -61,9 +83,13 @@ export default async function AlunoFichaPage({
     notFound();
   }
 
+  const now = new Date();
   const { firstOfMonth, firstOfNextMonth } = currentMonthRange();
 
-  const [concluidasResult, faltasResult, reposicoesResult] = await Promise.all([
+  const historicoPage = Math.max(1, Number(historico) || 1);
+  const historicoOffset = (historicoPage - 1) * HISTORICO_PAGE_SIZE;
+
+  const [concluidasResult, faltasResult, reposicoesResult, historicoResult] = await Promise.all([
     supabase
       .from("agendamento")
       .select("id", { count: "exact", head: true })
@@ -77,18 +103,45 @@ export default async function AlunoFichaPage({
       .select("id", { count: "exact", head: true })
       .eq("aluno_id", id)
       .eq("profissional_id", user.id)
-      .eq("status", "falta"),
+      .eq("status", "falta")
+      .gte("data_hora", firstOfMonth.toISOString())
+      .lt("data_hora", firstOfNextMonth.toISOString()),
     supabase
       .from("credito_reposicao")
-      .select("id", { count: "exact", head: true })
+      .select("id, agendamento_origem, expira_em, criado_em")
+      .eq("aluno_id", id)
+      .eq("usado", false)
+      .order("expira_em", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("agendamento")
+      .select("id, data_hora, status", { count: "exact" })
       .eq("aluno_id", id)
       .eq("profissional_id", user.id)
-      .eq("utilizado", false),
+      .lt("data_hora", now.toISOString())
+      .order("data_hora", { ascending: false })
+      .range(historicoOffset, historicoOffset + HISTORICO_PAGE_SIZE - 1),
   ]);
 
   const concluidas = concluidasResult.count ?? 0;
   const faltas = faltasResult.count ?? 0;
-  const reposicoes = reposicoesResult.count ?? 0;
+  const reposicoes = reposicoesResult.data ?? [];
+  const historicoSessoes = historicoResult.data ?? [];
+  const totalHistorico = historicoResult.count ?? 0;
+  const totalPaginasHistorico = Math.max(1, Math.ceil(totalHistorico / HISTORICO_PAGE_SIZE));
+
+  const origemIds = reposicoes
+    .map((r) => r.agendamento_origem)
+    .filter((v): v is string => v != null);
+
+  let origemPorId = new Map<string, string>();
+  if (origemIds.length > 0) {
+    const { data: origens } = await supabase
+      .from("agendamento")
+      .select("id, data_hora")
+      .in("id", origemIds);
+    origemPorId = new Map((origens ?? []).map((o) => [o.id, o.data_hora]));
+  }
+
   const aulasLabel =
     aluno.aulas_por_mes != null ? `${concluidas}/${aluno.aulas_por_mes}` : `${concluidas}`;
 
@@ -120,9 +173,7 @@ export default async function AlunoFichaPage({
           <Avatar nome={aluno.nome} fotoUrl={aluno.foto_url} size="lg" />
           <div>
             <p className="text-lg font-semibold">{aluno.nome}</p>
-            {aluno.telefone && (
-              <p className="text-sm text-fg-muted">{aluno.telefone}</p>
-            )}
+            {aluno.telefone && <p className="text-sm text-fg-muted">{aluno.telefone}</p>}
           </div>
           <div className="flex gap-2">
             {whatsapp && (
@@ -163,9 +214,9 @@ export default async function AlunoFichaPage({
         </section>
 
         <div className="flex gap-2">
-          <StatTile label={`Este mês: aulas`} value={aulasLabel} />
-          <StatTile label="Faltas" value={String(faltas)} />
-          <StatTile label="Reposições" value={String(reposicoes)} emphasis="blue" />
+          <StatTile label="Este mês: aulas" value={aulasLabel} />
+          <StatTile label="Faltas no mês" value={String(faltas)} />
+          <StatTile label="Reposições" value={String(reposicoes.length)} emphasis="blue" />
         </div>
 
         <section className="flex flex-col gap-1 rounded-card border border-border bg-surface p-4">
@@ -175,11 +226,91 @@ export default async function AlunoFichaPage({
           </p>
         </section>
 
+        <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">
+          <h2 className="text-sm font-semibold">Reposições</h2>
+          {reposicoes.length === 0 ? (
+            <p className="text-sm text-fg-muted">Nenhuma reposição disponível.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {reposicoes.map((credito) => {
+                const origemData = credito.agendamento_origem
+                  ? origemPorId.get(credito.agendamento_origem)
+                  : null;
+                return (
+                  <div
+                    key={credito.id}
+                    className="flex items-center justify-between gap-3 rounded-card border border-border px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        Origem: {origemData ? formatDataHoraCurta(origemData) : "-"}
+                      </p>
+                      <p className="truncate text-xs text-fg-muted">
+                        Expira em: {credito.expira_em ? formatDateBR(credito.expira_em) : "-"}
+                      </p>
+                    </div>
+                    <UsarReposicaoButton creditoId={credito.id} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
         <section className="flex flex-col gap-1 rounded-card border border-border bg-surface p-4">
-          <h2 className="text-sm font-semibold">Histórico de aulas</h2>
-          <p className="text-sm text-fg-muted">
-            Em breve — histórico completo chega na semana 4.
-          </p>
+          <h2 className="mb-2 text-sm font-semibold">Histórico de aulas</h2>
+          {historicoSessoes.length === 0 ? (
+            <p className="text-sm text-fg-muted">Nenhuma aula no histórico.</p>
+          ) : (
+            <>
+              <div className="flex flex-col">
+                {historicoSessoes.map((sessao) => (
+                  <div
+                    key={sessao.id}
+                    className="flex items-center gap-3 border-b border-border py-2.5 last:border-b-0"
+                  >
+                    <span
+                      className={`size-2.5 shrink-0 rounded-full ${statusBarColor[sessao.status]}`}
+                      aria-hidden
+                    />
+                    <span className="flex-1 text-sm">{formatDataHoraCurta(sessao.data_hora)}</span>
+                    <span className="text-xs text-fg-muted">
+                      {HISTORICO_STATUS_LABEL[sessao.status]}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {totalPaginasHistorico > 1 && (
+                <div className="flex items-center justify-between pt-3">
+                  <Link
+                    href={`/app/alunos/${id}?historico=${historicoPage - 1}`}
+                    aria-disabled={historicoPage <= 1}
+                    className={`flex h-9 items-center gap-1 text-sm font-medium ${
+                      historicoPage <= 1 ? "pointer-events-none text-fg-faint" : "text-primary"
+                    }`}
+                  >
+                    <ChevronLeft className="size-4" aria-hidden />
+                    Anterior
+                  </Link>
+                  <span className="text-xs text-fg-muted">
+                    Página {historicoPage} de {totalPaginasHistorico}
+                  </span>
+                  <Link
+                    href={`/app/alunos/${id}?historico=${historicoPage + 1}`}
+                    aria-disabled={historicoPage >= totalPaginasHistorico}
+                    className={`flex h-9 items-center gap-1 text-sm font-medium ${
+                      historicoPage >= totalPaginasHistorico
+                        ? "pointer-events-none text-fg-faint"
+                        : "text-primary"
+                    }`}
+                  >
+                    Próxima
+                    <ChevronRight className="size-4" aria-hidden />
+                  </Link>
+                </div>
+              )}
+            </>
+          )}
         </section>
 
         <section className="flex flex-col gap-1 rounded-card border border-border bg-surface p-4">

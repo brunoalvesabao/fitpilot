@@ -66,13 +66,20 @@ export default async function AgendaPage({
   if (view === "dia") {
     const dayStart = startOfSpDay(anchor, 0);
     const dayEnd = startOfSpDay(anchor, 1);
-    const { data: sessoesData } = await supabase
-      .from("agendamento")
-      .select("*")
-      .eq("profissional_id", user.id)
-      .gte("data_hora", dayStart.toISOString())
-      .lt("data_hora", dayEnd.toISOString())
-      .order("data_hora", { ascending: true });
+    const [{ data: sessoesData }, { data: configReposicao }] = await Promise.all([
+      supabase
+        .from("agendamento")
+        .select("*")
+        .eq("profissional_id", user.id)
+        .gte("data_hora", dayStart.toISOString())
+        .lt("data_hora", dayEnd.toISOString())
+        .order("data_hora", { ascending: true }),
+      supabase
+        .from("config_reposicao")
+        .select("antecedencia_horas")
+        .eq("profissional_id", user.id)
+        .maybeSingle(),
+    ]);
 
     const sessoes = (sessoesData ?? []).map(toSessao);
 
@@ -82,6 +89,7 @@ export default async function AgendaPage({
         data={dataParam}
         alunos={alunosParaSheet}
         sessoesDia={sessoes}
+        antecedenciaHoras={configReposicao?.antecedencia_horas ?? null}
       />
     );
   }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { startOfSpDay, spDateTimeToUtc, spWeekday } from "@/lib/datetime";
 import type { FormState } from "./form-state";
+import type { StatusAgendamento } from "@/types/database";
 
 const GERACAO_DIAS = 14;
 const DURACAO_PADRAO_MIN = 60;
@@ -103,6 +104,50 @@ export async function generateUpcomingAgendamentos(): Promise<void> {
     revalidatePath("/app/hoje");
     revalidatePath("/app/agenda");
   }
+}
+
+export async function setAgendamentoStatus(
+  agendamentoId: string,
+  novoStatus: StatusAgendamento,
+): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: agendamento } = await supabase
+    .from("agendamento")
+    .select("status, aluno_id")
+    .eq("id", agendamentoId)
+    .eq("profissional_id", user.id)
+    .maybeSingle();
+
+  if (!agendamento) return;
+
+  const { error } = await supabase
+    .from("agendamento")
+    .update({ status: novoStatus })
+    .eq("id", agendamentoId)
+    .eq("profissional_id", user.id);
+
+  if (error) return;
+
+  // The DB trigger creates the reposição credit when status becomes
+  // cancelado_com_aviso — we never insert it ourselves. But if we're
+  // moving AWAY from cancelado_com_aviso (undo, or correcting to another
+  // status), the credit it generated is no longer valid unless already used.
+  if (agendamento.status === "cancelado_com_aviso" && novoStatus !== "cancelado_com_aviso") {
+    await supabase
+      .from("credito_reposicao")
+      .delete()
+      .eq("agendamento_origem", agendamentoId)
+      .eq("usado", false);
+  }
+
+  revalidatePath("/app/hoje");
+  revalidatePath("/app/agenda");
+  revalidatePath(`/app/alunos/${agendamento.aluno_id}`);
 }
 
 function ymdFromUtcMidnight(dayStart: Date) {

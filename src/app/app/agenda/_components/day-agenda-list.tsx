@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { SessionRow } from "@/components/session-row";
 import { PeriodHeader } from "@/components/period-header";
 import { spParts } from "@/lib/datetime";
 import { AgendamentoSheet, type AgendamentoInicial } from "./agendamento-sheet";
+import { FaltaSheet } from "./falta-sheet";
+import { setAgendamentoStatus } from "../actions";
 import type { StatusAgendamento } from "@/types/database";
 
 export type SessaoDia = {
@@ -35,16 +37,20 @@ export function DayAgendaList({
   data,
   emptyLabel = "Nenhuma aula hoje",
   title,
+  antecedenciaHoras = null,
 }: {
   sessoes: SessaoDia[];
   alunos: { id: string; nome: string }[];
   data: string; // "YYYY-MM-DD", default date for the create sheet
   emptyLabel?: string;
   title?: string;
+  antecedenciaHoras?: number | null;
 }) {
   const [sheet, setSheet] = useState<
     { mode: "closed" } | { mode: "create" } | { mode: "view"; sessao: SessaoDia }
   >({ mode: "closed" });
+  const [faltaSessao, setFaltaSessao] = useState<SessaoDia | null>(null);
+  const [, startTransition] = useTransition();
 
   const grupos: { periodo: "manha" | "tarde" | "noite"; sessoes: SessaoDia[] }[] = (
     ["manha", "tarde", "noite"] as const
@@ -71,6 +77,23 @@ export function DayAgendaList({
           status: sheet.sessao.status,
         }
       : undefined;
+
+  function handleCheck(sessao: SessaoDia) {
+    const novoStatus = sessao.status === "realizada" ? "agendado" : "realizada";
+    startTransition(() => {
+      setAgendamentoStatus(sessao.id, novoStatus);
+    });
+  }
+
+  function handleFaltaClick(sessao: SessaoDia) {
+    if (sessao.status === "falta" || sessao.status === "cancelado_com_aviso") {
+      startTransition(() => {
+        setAgendamentoStatus(sessao.id, "agendado");
+      });
+    } else {
+      setFaltaSessao(sessao);
+    }
+  }
 
   return (
     <div className="flex flex-1 flex-col">
@@ -100,6 +123,8 @@ export function DayAgendaList({
                   alunoNome={sessao.alunoNome}
                   planoResumo={sessao.planoResumo}
                   onClick={() => setSheet({ mode: "view", sessao })}
+                  onCheck={() => handleCheck(sessao)}
+                  onFalta={() => handleFaltaClick(sessao)}
                 />
               ))}
             </div>
@@ -124,6 +149,20 @@ export function DayAgendaList({
           alunos={alunos}
           initial={initial}
           defaultData={data}
+        />
+      )}
+
+      {faltaSessao && (
+        <FaltaSheet
+          sessao={faltaSessao}
+          antecedenciaHoras={antecedenciaHoras}
+          onClose={() => setFaltaSessao(null)}
+          onEscolha={(status) => {
+            startTransition(() => {
+              setAgendamentoStatus(faltaSessao.id, status);
+            });
+            setFaltaSessao(null);
+          }}
         />
       )}
     </div>

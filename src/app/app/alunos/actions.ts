@@ -208,3 +208,32 @@ export async function deactivateAluno(alunoId: string): Promise<void> {
   revalidatePath(`/app/alunos/${alunoId}`);
   redirect("/app/alunos");
 }
+
+export async function usarReposicao(creditoId: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: credito } = await supabase
+    .from("credito_reposicao")
+    .select("aluno_id")
+    .eq("id", creditoId)
+    .maybeSingle();
+
+  if (!credito) return;
+
+  const { data: aluno } = await supabase
+    .from("aluno")
+    .select("id")
+    .eq("id", credito.aluno_id)
+    .eq("profissional_id", user.id)
+    .maybeSingle();
+
+  if (!aluno) return;
+
+  await supabase.from("credito_reposicao").update({ usado: true }).eq("id", creditoId);
+
+  revalidatePath(`/app/alunos/${credito.aluno_id}`);
+}

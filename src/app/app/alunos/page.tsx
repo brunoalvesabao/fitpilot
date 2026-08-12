@@ -20,18 +20,11 @@ export default async function AlunosPage() {
     );
   }
 
-  const [alunosResult, creditosResult] = await Promise.all([
-    supabase
-      .from("aluno")
-      .select("*")
-      .eq("profissional_id", user.id)
-      .order("nome", { ascending: true }),
-    supabase
-      .from("credito_reposicao")
-      .select("aluno_id")
-      .eq("profissional_id", user.id)
-      .eq("utilizado", false),
-  ]);
+  const alunosResult = await supabase
+    .from("aluno")
+    .select("*")
+    .eq("profissional_id", user.id)
+    .order("nome", { ascending: true });
 
   if (alunosResult.error) {
     return (
@@ -45,10 +38,19 @@ export default async function AlunosPage() {
   }
 
   const alunos = (alunosResult.data ?? []) as Aluno[];
+  const alunoIds = alunos.map((a) => a.id);
 
   const reposicoesPorAluno: Record<string, number> = {};
-  for (const row of creditosResult.data ?? []) {
-    reposicoesPorAluno[row.aluno_id] = (reposicoesPorAluno[row.aluno_id] ?? 0) + 1;
+  if (alunoIds.length > 0) {
+    const { data: creditos } = await supabase
+      .from("credito_reposicao")
+      .select("aluno_id")
+      .in("aluno_id", alunoIds)
+      .eq("usado", false);
+
+    for (const row of creditos ?? []) {
+      reposicoesPorAluno[row.aluno_id] = (reposicoesPorAluno[row.aluno_id] ?? 0) + 1;
+    }
   }
 
   return <AlunosListClient alunos={alunos} reposicoesPorAluno={reposicoesPorAluno} />;

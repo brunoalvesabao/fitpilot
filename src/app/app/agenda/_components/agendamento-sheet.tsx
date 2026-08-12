@@ -20,11 +20,13 @@ export type AgendamentoInicial = {
 };
 
 const statusConfig: Record<StatusAgendamento, { label: string; color: "blue" | "green" | "red" | "gray" }> = {
-  agendado: { label: "Agendado", color: "blue" },
+  agendado: { label: "Agendado", color: "gray" },
   realizada: { label: "Realizada", color: "green" },
   falta: { label: "Falta", color: "red" },
-  cancelado_com_aviso: { label: "Cancelado", color: "gray" },
+  cancelado_com_aviso: { label: "Cancelado com aviso", color: "blue" },
 };
+
+export { statusConfig };
 
 const inputClasses =
   "h-touch rounded-card border border-border bg-bg px-4 text-fg placeholder:text-fg-faint focus:outline-none focus:ring-2 focus:ring-primary";

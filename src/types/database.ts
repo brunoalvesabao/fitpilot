@@ -82,14 +82,11 @@ export type Pagamento = {
 
 export type CreditoReposicao = {
   id: UUID;
-  profissional_id: UUID;
   aluno_id: UUID;
-  agendamento_origem_id: UUID | null;
-  agendamento_utilizado_id: UUID | null;
-  utilizado: boolean;
-  data_expiracao: string | null;
-  created_at: string;
-  updated_at: string;
+  agendamento_origem: UUID | null;
+  usado: boolean;
+  expira_em: string | null; // "YYYY-MM-DD"
+  criado_em: string;
 };
 
 export type ConfigModulos = {
@@ -103,13 +100,10 @@ export type ConfigModulos = {
 };
 
 export type ConfigReposicao = {
-  id: UUID;
-  profissional_id: UUID;
-  prazo_solicitacao_horas: number;
-  validade_credito_dias: number;
-  limite_creditos_por_aluno: number;
-  created_at: string;
-  updated_at: string;
+  profissional_id: UUID; // primary key
+  permitir: boolean;
+  antecedencia_horas: number;
+  expira_mes_seguinte: boolean;
 };
 
 export type Bloqueio = {
@@ -157,7 +151,7 @@ export type Database = {
       };
       credito_reposicao: {
         Row: CreditoReposicao;
-        Insert: Partial<CreditoReposicao> & Pick<CreditoReposicao, "profissional_id" | "aluno_id">;
+        Insert: Partial<CreditoReposicao> & Pick<CreditoReposicao, "aluno_id">;
         Update: Partial<CreditoReposicao>;
         Relationships: [];
       };
@@ -169,7 +163,7 @@ export type Database = {
       };
       config_reposicao: {
         Row: ConfigReposicao;
-        Insert: Partial<ConfigReposicao> & Pick<ConfigReposicao, "profissional_id">;
+        Insert: ConfigReposicao;
         Update: Partial<ConfigReposicao>;
         Relationships: [];
       };

@@ -31,6 +31,7 @@ export function AgendaClient(
         data: string;
         alunos: { id: string; nome: string }[];
         sessoesDia: SessaoDia[];
+        antecedenciaHoras: number | null;
       }
     | {
         view: "semana";
@@ -71,6 +72,7 @@ export function AgendaClient(
           alunos={props.alunos}
           data={props.data}
           emptyLabel="Nenhuma aula neste dia"
+          antecedenciaHoras={props.antecedenciaHoras}
         />
       ) : (
         <WeekView data={props.data} alunos={props.alunos} dias={props.sessoesSemana} />

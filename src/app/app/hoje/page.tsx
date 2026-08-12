@@ -43,33 +43,45 @@ export default async function HojePage() {
   const today = spParts(now);
   const competenciaAtual = `${today.year}-${String(today.month).padStart(2, "0")}-01`;
 
-  const [profissionalResult, aulasHojeResult, faltasMesResult, alunosResult, sessoesResult] =
-    await Promise.all([
-      supabase.from("profissional").select("nome").eq("id", user.id).maybeSingle(),
-      supabase
-        .from("agendamento")
-        .select("id", { count: "exact", head: true })
-        .eq("profissional_id", user.id)
-        .gte("data_hora", todayStart.toISOString())
-        .lt("data_hora", todayEnd.toISOString()),
-      supabase
-        .from("agendamento")
-        .select("id", { count: "exact", head: true })
-        .eq("profissional_id", user.id)
-        .eq("status", "falta")
-        .gte("data_hora", monthStart.toISOString())
-        .lt("data_hora", monthEnd.toISOString()),
-      supabase.from("aluno").select("*").eq("profissional_id", user.id).eq("ativo", true),
-      supabase
-        .from("agendamento")
-        .select("*")
-        .eq("profissional_id", user.id)
-        .gte("data_hora", todayStart.toISOString())
-        .lt("data_hora", todayEnd.toISOString())
-        .order("data_hora", { ascending: true }),
-    ]);
+  const [
+    profissionalResult,
+    aulasHojeResult,
+    faltasMesResult,
+    alunosResult,
+    sessoesResult,
+    configReposicaoResult,
+  ] = await Promise.all([
+    supabase.from("profissional").select("nome").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("agendamento")
+      .select("id", { count: "exact", head: true })
+      .eq("profissional_id", user.id)
+      .gte("data_hora", todayStart.toISOString())
+      .lt("data_hora", todayEnd.toISOString()),
+    supabase
+      .from("agendamento")
+      .select("id", { count: "exact", head: true })
+      .eq("profissional_id", user.id)
+      .eq("status", "falta")
+      .gte("data_hora", monthStart.toISOString())
+      .lt("data_hora", monthEnd.toISOString()),
+    supabase.from("aluno").select("*").eq("profissional_id", user.id).eq("ativo", true),
+    supabase
+      .from("agendamento")
+      .select("*")
+      .eq("profissional_id", user.id)
+      .gte("data_hora", todayStart.toISOString())
+      .lt("data_hora", todayEnd.toISOString())
+      .order("data_hora", { ascending: true }),
+    supabase
+      .from("config_reposicao")
+      .select("antecedencia_horas")
+      .eq("profissional_id", user.id)
+      .maybeSingle(),
+  ]);
 
   const nomeProfissional = profissionalResult.data?.nome ?? "";
+  const antecedenciaHoras = configReposicaoResult.data?.antecedencia_horas ?? null;
   const alunos = (alunosResult.data ?? []) as Aluno[];
   const alunosPorId = new Map(alunos.map((a) => [a.id, a]));
 
@@ -174,6 +186,7 @@ export default async function HojePage() {
         alunos={alunos.map((a) => ({ id: a.id, nome: a.nome }))}
         data={spDayKey(now)}
         title="Agenda de hoje"
+        antecedenciaHoras={antecedenciaHoras}
       />
     </div>
   );
