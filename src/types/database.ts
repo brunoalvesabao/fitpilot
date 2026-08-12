@@ -13,7 +13,21 @@ export type StatusAgendamento =
 
 export type StatusPagamento = "pendente" | "pago" | "atrasado";
 
-export interface Profissional {
+export type StatusAluno =
+  | "ativo"
+  | "vencendo"
+  | "inadimplente"
+  | "pausa"
+  | "ex_aluno"
+  | "lead";
+
+export type PlanoTipo = "mensal" | "pacote" | "avulso";
+
+// NOTE: these are `type` aliases, not `interface` declarations, on purpose —
+// interfaces don't structurally satisfy the `Record<string, unknown>` shape
+// that the Supabase query builder generics expect for Row/Insert/Update.
+
+export type Profissional = {
   id: UUID; // references auth.users.id
   nome: string;
   email: string;
@@ -21,24 +35,25 @@ export interface Profissional {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface Aluno {
+export type Aluno = {
   id: UUID;
   profissional_id: UUID;
   nome: string;
-  email: string | null;
   telefone: string | null;
-  data_nascimento: string | null;
-  sexo: string | null;
-  objetivo: string | null;
+  status: StatusAluno;
+  plano_tipo: PlanoTipo | null;
+  valor_mensal: number | null;
+  aulas_por_mes: number | null;
+  dia_vencimento: number | null; // 1-31
   observacoes: string | null;
-  ativo: boolean;
+  ativo: boolean; // soft delete flag
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface HorarioFixo {
+export type HorarioFixo = {
   id: UUID;
   profissional_id: UUID;
   aluno_id: UUID;
@@ -48,9 +63,9 @@ export interface HorarioFixo {
   ativo: boolean;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface Agendamento {
+export type Agendamento = {
   id: UUID;
   profissional_id: UUID;
   aluno_id: UUID;
@@ -62,9 +77,9 @@ export interface Agendamento {
   observacoes: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface Pagamento {
+export type Pagamento = {
   id: UUID;
   profissional_id: UUID;
   aluno_id: UUID;
@@ -76,9 +91,9 @@ export interface Pagamento {
   forma_pagamento: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface CreditoReposicao {
+export type CreditoReposicao = {
   id: UUID;
   profissional_id: UUID;
   aluno_id: UUID;
@@ -88,9 +103,9 @@ export interface CreditoReposicao {
   data_expiracao: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface ConfigModulos {
+export type ConfigModulos = {
   id: UUID;
   profissional_id: UUID;
   modulo_financeiro: boolean;
@@ -98,9 +113,9 @@ export interface ConfigModulos {
   modulo_avaliacao: boolean;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface ConfigReposicao {
+export type ConfigReposicao = {
   id: UUID;
   profissional_id: UUID;
   prazo_solicitacao_horas: number;
@@ -108,9 +123,9 @@ export interface ConfigReposicao {
   limite_creditos_por_aluno: number;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface Bloqueio {
+export type Bloqueio = {
   id: UUID;
   profissional_id: UUID;
   data_inicio: string; // ISO timestamp
@@ -119,62 +134,71 @@ export interface Bloqueio {
   motivo: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       profissional: {
         Row: Profissional;
         Insert: Partial<Profissional> & Pick<Profissional, "id" | "nome" | "email">;
         Update: Partial<Profissional>;
+        Relationships: [];
       };
       aluno: {
         Row: Aluno;
-        Insert: Partial<Aluno> & Pick<Aluno, "profissional_id" | "nome">;
+        Insert: Partial<Aluno> & Pick<Aluno, "profissional_id" | "nome" | "status">;
         Update: Partial<Aluno>;
+        Relationships: [];
       };
       horario_fixo: {
         Row: HorarioFixo;
         Insert: Partial<HorarioFixo> &
           Pick<HorarioFixo, "profissional_id" | "aluno_id" | "dia_semana" | "hora_inicio" | "hora_fim">;
         Update: Partial<HorarioFixo>;
+        Relationships: [];
       };
       agendamento: {
         Row: Agendamento;
         Insert: Partial<Agendamento> &
           Pick<Agendamento, "profissional_id" | "aluno_id" | "data" | "hora_inicio" | "hora_fim">;
         Update: Partial<Agendamento>;
+        Relationships: [];
       };
       pagamento: {
         Row: Pagamento;
         Insert: Partial<Pagamento> &
           Pick<Pagamento, "profissional_id" | "aluno_id" | "valor" | "referencia_mes" | "data_vencimento">;
         Update: Partial<Pagamento>;
+        Relationships: [];
       };
       credito_reposicao: {
         Row: CreditoReposicao;
         Insert: Partial<CreditoReposicao> & Pick<CreditoReposicao, "profissional_id" | "aluno_id">;
         Update: Partial<CreditoReposicao>;
+        Relationships: [];
       };
       config_modulos: {
         Row: ConfigModulos;
         Insert: Partial<ConfigModulos> & Pick<ConfigModulos, "profissional_id">;
         Update: Partial<ConfigModulos>;
+        Relationships: [];
       };
       config_reposicao: {
         Row: ConfigReposicao;
         Insert: Partial<ConfigReposicao> & Pick<ConfigReposicao, "profissional_id">;
         Update: Partial<ConfigReposicao>;
+        Relationships: [];
       };
       bloqueio: {
         Row: Bloqueio;
         Insert: Partial<Bloqueio> & Pick<Bloqueio, "profissional_id" | "data_inicio" | "data_fim">;
         Update: Partial<Bloqueio>;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: Record<string, never>;
   };
-}
+};
