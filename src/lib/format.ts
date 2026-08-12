@@ -51,6 +51,27 @@ export function initials(nome: string): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
+export function planoResumo(aluno: {
+  valor_mensal: number | null;
+  dia_vencimento: number | null;
+  aulas_por_mes: number | null;
+}): string {
+  if (aluno.valor_mensal == null && aluno.dia_vencimento == null && aluno.aulas_por_mes == null) {
+    return "Sem plano definido";
+  }
+
+  let line = "Mensal";
+  if (aluno.valor_mensal != null) {
+    line += ` ${formatCurrencyBRL(aluno.valor_mensal)}`;
+  }
+  if (aluno.dia_vencimento != null) {
+    line += ` · vence dia ${aluno.dia_vencimento}`;
+  } else if (aluno.aulas_por_mes != null) {
+    line += ` · ${aluno.aulas_por_mes} aulas/mês`;
+  }
+  return line;
+}
+
 export function avatarColor(nome: string): string {
   let hash = 0;
   for (let i = 0; i < nome.length; i++) {

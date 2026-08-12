@@ -7,9 +7,9 @@ export type DiaSemana = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = domingo
 
 export type StatusAgendamento =
   | "agendado"
-  | "concluido"
-  | "cancelado"
-  | "falta";
+  | "realizada"
+  | "falta"
+  | "cancelado_com_aviso";
 
 export type StatusPagamento = "pendente" | "pago" | "atrasado";
 
@@ -62,14 +62,11 @@ export type Agendamento = {
   id: UUID;
   profissional_id: UUID;
   aluno_id: UUID;
-  horario_fixo_id: UUID | null;
-  data: string; // "YYYY-MM-DD"
-  hora_inicio: string;
-  hora_fim: string;
+  data_hora: string; // ISO timestamp
+  duracao_min: number;
   status: StatusAgendamento;
-  observacoes: string | null;
-  created_at: string;
-  updated_at: string;
+  local: string | null;
+  criado_em: string;
 };
 
 export type Pagamento = {
@@ -121,12 +118,9 @@ export type ConfigReposicao = {
 export type Bloqueio = {
   id: UUID;
   profissional_id: UUID;
-  data_inicio: string; // ISO timestamp
-  data_fim: string; // ISO timestamp
-  dia_todo: boolean;
+  inicio: string; // ISO timestamp
+  fim: string; // ISO timestamp
   motivo: string | null;
-  created_at: string;
-  updated_at: string;
 };
 
 export type Database = {
@@ -153,7 +147,7 @@ export type Database = {
       agendamento: {
         Row: Agendamento;
         Insert: Partial<Agendamento> &
-          Pick<Agendamento, "profissional_id" | "aluno_id" | "data" | "hora_inicio" | "hora_fim">;
+          Pick<Agendamento, "profissional_id" | "aluno_id" | "data_hora">;
         Update: Partial<Agendamento>;
         Relationships: [];
       };
@@ -184,7 +178,7 @@ export type Database = {
       };
       bloqueio: {
         Row: Bloqueio;
-        Insert: Partial<Bloqueio> & Pick<Bloqueio, "profissional_id" | "data_inicio" | "data_fim">;
+        Insert: Partial<Bloqueio> & Pick<Bloqueio, "profissional_id" | "inicio" | "fim">;
         Update: Partial<Bloqueio>;
         Relationships: [];
       };

@@ -2,25 +2,8 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { StatusPill, Pill } from "@/components/status-pill";
-import { formatCurrencyBRL } from "@/lib/format";
+import { planoResumo } from "@/lib/format";
 import type { Aluno } from "@/types/database";
-
-function secondaryLine(aluno: Aluno): string {
-  if (aluno.valor_mensal == null && aluno.dia_vencimento == null && aluno.aulas_por_mes == null) {
-    return "Sem plano definido";
-  }
-
-  let line = "Mensal";
-  if (aluno.valor_mensal != null) {
-    line += ` ${formatCurrencyBRL(aluno.valor_mensal)}`;
-  }
-  if (aluno.dia_vencimento != null) {
-    line += ` · vence dia ${aluno.dia_vencimento}`;
-  } else if (aluno.aulas_por_mes != null) {
-    line += ` · ${aluno.aulas_por_mes} aulas/mês`;
-  }
-  return line;
-}
 
 export function StudentRow({
   aluno,
@@ -37,7 +20,7 @@ export function StudentRow({
       <Avatar nome={aluno.nome} fotoUrl={aluno.foto_url} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-base font-semibold">{aluno.nome}</p>
-        <p className="truncate text-sm text-fg-muted">{secondaryLine(aluno)}</p>
+        <p className="truncate text-sm text-fg-muted">{planoResumo(aluno)}</p>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1.5">
         <StatusPill status={aluno.status} />

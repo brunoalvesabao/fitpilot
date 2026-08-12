@@ -5,18 +5,16 @@ import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/avatar";
 import { StatTile } from "@/components/stat-tile";
 import { formatCurrencyBRL, formatDateBR, whatsappHref, telHref } from "@/lib/format";
+import { startOfSpMonth } from "@/lib/datetime";
 import { DesativarAlunoButton } from "../_components/desativar-aluno-button";
 import type { Aluno } from "@/types/database";
 
 function currentMonthRange() {
   const now = new Date();
-  const first = new Date(now.getFullYear(), now.getMonth(), 1);
-  const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const toISODate = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-      d.getDate(),
-    ).padStart(2, "0")}`;
-  return { first: toISODate(first), last: toISODate(last) };
+  return {
+    firstOfMonth: startOfSpMonth(now, 0),
+    firstOfNextMonth: startOfSpMonth(now, 1),
+  };
 }
 
 export default async function AlunoFichaPage({
@@ -63,7 +61,7 @@ export default async function AlunoFichaPage({
     notFound();
   }
 
-  const { first, last } = currentMonthRange();
+  const { firstOfMonth, firstOfNextMonth } = currentMonthRange();
 
   const [concluidasResult, faltasResult, reposicoesResult] = await Promise.all([
     supabase
@@ -71,9 +69,9 @@ export default async function AlunoFichaPage({
       .select("id", { count: "exact", head: true })
       .eq("aluno_id", id)
       .eq("profissional_id", user.id)
-      .eq("status", "concluido")
-      .gte("data", first)
-      .lte("data", last),
+      .eq("status", "realizada")
+      .gte("data_hora", firstOfMonth.toISOString())
+      .lt("data_hora", firstOfNextMonth.toISOString()),
     supabase
       .from("agendamento")
       .select("id", { count: "exact", head: true })
