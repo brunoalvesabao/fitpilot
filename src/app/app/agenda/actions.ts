@@ -19,6 +19,19 @@ export async function generateUpcomingAgendamentos(): Promise<void> {
   const now = new Date();
   const rangeStart = startOfSpDay(now, 0);
   const rangeEnd = startOfSpDay(now, GERACAO_DIAS);
+  const lastDayStart = startOfSpDay(now, GERACAO_DIAS - 1);
+
+  // Cheap guard: if agendamentos already exist for the last day of the
+  // rolling window, generation already ran for today — skip the full
+  // multi-query pass below on every single Hoje render.
+  const { count: jaGerado } = await supabase
+    .from("agendamento")
+    .select("id", { count: "exact", head: true })
+    .eq("profissional_id", user.id)
+    .gte("data_hora", lastDayStart.toISOString())
+    .lt("data_hora", rangeEnd.toISOString());
+
+  if (jaGerado && jaGerado > 0) return;
 
   const { data: alunos } = await supabase
     .from("aluno")

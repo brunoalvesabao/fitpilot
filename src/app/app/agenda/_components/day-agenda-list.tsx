@@ -143,8 +143,8 @@ export function DayAgendaList({
         type="button"
         onClick={() => setSheet({ mode: "create" })}
         aria-label="Novo agendamento"
-        className="fixed right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-bg"
-        style={{ bottom: "calc(var(--size-tabbar) + env(safe-area-inset-bottom) + 16px)" }}
+        className="fixed z-40 flex size-14 items-center justify-center rounded-full bg-primary text-bg"
+        style={{ bottom: "calc(env(safe-area-inset-bottom) + 96px)", right: "20px" }}
       >
         <Plus className="size-6" aria-hidden />
       </button>
