@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { spParts } from "@/lib/datetime";
-import { competenciaStr, diaVencimentoEfetivo } from "@/lib/financeiro";
+import { competenciaStr, derivarStatusAluno } from "@/lib/financeiro";
 import type { DiaSemana } from "@/types/database";
 import type { FormState } from "./form-state";
 
@@ -288,25 +288,17 @@ export async function recalcularStatusAlunos(): Promise<void> {
   const idsAtivo: string[] = [];
 
   for (const aluno of alunos) {
-    const matriculadoAntesDoMesAnterior = aluno.criado_em < competenciaAnterior;
+    const status = derivarStatusAluno({
+      hoje,
+      diaVencimento: aluno.dia_vencimento,
+      pagouMesAnterior: pagouAnteriorSet.has(aluno.id),
+      pagouMesAtual: pagouAtualSet.has(aluno.id),
+      matriculadoAntesDoMesAnterior: aluno.criado_em < competenciaAnterior,
+    });
 
-    if (matriculadoAntesDoMesAnterior && !pagouAnteriorSet.has(aluno.id)) {
-      idsInadimplente.push(aluno.id);
-      continue;
-    }
-
-    if (aluno.dia_vencimento != null && !pagouAtualSet.has(aluno.id)) {
-      const diaEfetivo = diaVencimentoEfetivo(aluno.dia_vencimento, hoje.year, hoje.month);
-      const hojeUtc = Date.UTC(hoje.year, hoje.month - 1, hoje.day);
-      const vencimentoUtc = Date.UTC(hoje.year, hoje.month - 1, diaEfetivo);
-      const diasParaVencer = Math.round((vencimentoUtc - hojeUtc) / 86_400_000);
-      if (diasParaVencer >= 0 && diasParaVencer <= 3) {
-        idsVencendo.push(aluno.id);
-        continue;
-      }
-    }
-
-    idsAtivo.push(aluno.id);
+    if (status === "inadimplente") idsInadimplente.push(aluno.id);
+    else if (status === "vencendo") idsVencendo.push(aluno.id);
+    else idsAtivo.push(aluno.id);
   }
 
   await Promise.all([

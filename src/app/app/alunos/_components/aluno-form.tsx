@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
 import { maskPhoneBR } from "@/lib/format";
@@ -17,10 +17,26 @@ const DIAS: { dia: DiaSemana; letra: string; nomeCompleto: string }[] = [
   { dia: 0, letra: "D", nomeCompleto: "Domingo" },
 ];
 
+const LOCAL_OPTIONS = ["Academia", "Condomínio", "Online"] as const;
+
 const inputClasses =
   "h-touch rounded-card border border-border bg-surface px-4 text-fg placeholder:text-fg-faint focus:outline-none focus:ring-2 focus:ring-primary";
 
 type FormAction = (prevState: FormState, formData: FormData) => Promise<FormState>;
+
+function preventEnterSubmit(event: KeyboardEvent<HTMLInputElement>) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+  }
+}
+
+function tipoFromLocal(local: string | null): { localTipo: string; localOutro: string } {
+  if (!local) return { localTipo: "", localOutro: "" };
+  if ((LOCAL_OPTIONS as readonly string[]).includes(local)) {
+    return { localTipo: local, localOutro: "" };
+  }
+  return { localTipo: "Outro", localOutro: local };
+}
 
 export function AlunoForm({
   title,
@@ -50,14 +66,14 @@ export function AlunoForm({
   );
   const [observacoes, setObservacoes] = useState(initialAluno?.observacoes ?? "");
 
-  type HorarioDia = { hora: string; local: string };
+  type HorarioDia = { hora: string; localTipo: string; localOutro: string };
 
   const [horarios, setHorarios] = useState<Partial<Record<DiaSemana, HorarioDia>>>(() => {
     const initial: Partial<Record<DiaSemana, HorarioDia>> = {};
     for (const horario of initialHorarios) {
       initial[horario.dia_semana] = {
         hora: horario.hora.slice(0, 5),
-        local: horario.local ?? "",
+        ...tipoFromLocal(horario.local),
       };
     }
     return initial;
@@ -69,7 +85,7 @@ export function AlunoForm({
       if (next[dia] != null) {
         delete next[dia];
       } else {
-        next[dia] = { hora: "06:00", local: "" };
+        next[dia] = { hora: "06:00", localTipo: "", localOutro: "" };
       }
       return next;
     });
@@ -79,17 +95,26 @@ export function AlunoForm({
     setHorarios((prev) => ({ ...prev, [dia]: { ...prev[dia]!, hora } }));
   }
 
-  function setLocalForDia(dia: DiaSemana, local: string) {
-    setHorarios((prev) => ({ ...prev, [dia]: { ...prev[dia]!, local } }));
+  function setLocalTipoForDia(dia: DiaSemana, localTipo: string) {
+    setHorarios((prev) => ({ ...prev, [dia]: { ...prev[dia]!, localTipo } }));
+  }
+
+  function setLocalOutroForDia(dia: DiaSemana, localOutro: string) {
+    setHorarios((prev) => ({ ...prev, [dia]: { ...prev[dia]!, localOutro } }));
   }
 
   const horariosPayload = useMemo(
     () =>
-      DIAS.filter(({ dia }) => horarios[dia] != null).map(({ dia }) => ({
-        dia_semana: dia,
-        hora: horarios[dia]!.hora,
-        local: horarios[dia]!.local.trim() || null,
-      })),
+      DIAS.filter(({ dia }) => horarios[dia] != null).map(({ dia }) => {
+        const h = horarios[dia]!;
+        let local: string | null = null;
+        if (h.localTipo === "Outro") {
+          local = h.localOutro.trim() || null;
+        } else if (h.localTipo !== "") {
+          local = h.localTipo;
+        }
+        return { dia_semana: dia, hora: h.hora, local };
+      }),
     [horarios],
   );
 
@@ -122,16 +147,10 @@ export function AlunoForm({
           <X className="size-5" aria-hidden />
         </Link>
         <h1 className="text-base font-semibold">{title}</h1>
-        <button
-          type="submit"
-          disabled={!isValid || pending}
-          className="h-11 px-3 text-base font-semibold text-primary disabled:text-fg-faint"
-        >
-          Salvar
-        </button>
+        <div className="size-11" />
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 pb-36">
         {state.formError && (
           <p className="text-sm text-red">{state.formError}</p>
         )}
@@ -150,6 +169,7 @@ export function AlunoForm({
               required
               value={nome}
               onChange={(event) => setNome(event.target.value)}
+              onKeyDown={preventEnterSubmit}
               className={inputClasses}
             />
             {state.errors.nome && (
@@ -169,17 +189,16 @@ export function AlunoForm({
               placeholder="(11) 91234-5678"
               value={telefone}
               onChange={(event) => setTelefone(maskPhoneBR(event.target.value))}
+              onKeyDown={preventEnterSubmit}
               className={inputClasses}
             />
           </div>
         </section>
 
         <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">
-          <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
             <span className="text-sm text-fg-muted">Plano</span>
-            <p className="h-touch flex items-center rounded-card border border-border bg-bg px-4 text-fg">
-              Mensal
-            </p>
+            <span className="text-sm font-medium">Plano mensal</span>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -194,6 +213,7 @@ export function AlunoForm({
               placeholder="450"
               value={valorMensal}
               onChange={(event) => setValorMensal(event.target.value)}
+              onKeyDown={preventEnterSubmit}
               className={inputClasses}
             />
             {(state.errors.valor_mensal || !valorMensalValido) && (
@@ -215,6 +235,7 @@ export function AlunoForm({
               placeholder="8"
               value={aulasPorMes}
               onChange={(event) => setAulasPorMes(event.target.value)}
+              onKeyDown={preventEnterSubmit}
               className={inputClasses}
             />
             {(state.errors.aulas_por_mes || !aulasPorMesValido) && (
@@ -236,6 +257,7 @@ export function AlunoForm({
               placeholder="10"
               value={diaVencimento}
               onChange={(event) => setDiaVencimento(event.target.value)}
+              onKeyDown={preventEnterSubmit}
               className={inputClasses}
             />
             {(state.errors.dia_vencimento || !diaVencimentoValido) && (
@@ -278,16 +300,33 @@ export function AlunoForm({
                       type="time"
                       value={horarios[dia]!.hora}
                       onChange={(event) => setHoraForDia(dia, event.target.value)}
+                      onKeyDown={preventEnterSubmit}
                       className="h-touch rounded-card border border-border bg-surface px-3 text-fg"
                     />
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Academia, condomínio, online..."
-                    value={horarios[dia]!.local}
-                    onChange={(event) => setLocalForDia(dia, event.target.value)}
-                    className="h-touch rounded-card border border-border bg-surface px-3 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
+                  <select
+                    value={horarios[dia]!.localTipo}
+                    onChange={(event) => setLocalTipoForDia(dia, event.target.value)}
+                    className="h-touch rounded-card border border-border bg-surface px-3 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Selecione o local</option>
+                    {LOCAL_OPTIONS.map((opcao) => (
+                      <option key={opcao} value={opcao}>
+                        {opcao}
+                      </option>
+                    ))}
+                    <option value="Outro">Outro</option>
+                  </select>
+                  {horarios[dia]!.localTipo === "Outro" && (
+                    <input
+                      type="text"
+                      placeholder="Digite o local"
+                      value={horarios[dia]!.localOutro}
+                      onChange={(event) => setLocalOutroForDia(dia, event.target.value)}
+                      onKeyDown={preventEnterSubmit}
+                      className="h-touch rounded-card border border-border bg-surface px-3 text-sm text-fg placeholder:text-fg-faint focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -310,6 +349,19 @@ export function AlunoForm({
             className="resize-none rounded-card border border-border bg-bg px-4 py-3 text-fg placeholder:text-fg-faint focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </section>
+      </div>
+
+      <div
+        className="fixed inset-x-0 z-40 border-t border-border bg-surface px-4 pb-3 pt-3"
+        style={{ bottom: "calc(var(--size-touch) + env(safe-area-inset-bottom))" }}
+      >
+        <button
+          type="submit"
+          disabled={!isValid || pending}
+          className="h-touch w-full rounded-card bg-primary font-semibold text-bg disabled:opacity-60"
+        >
+          {pending ? "Salvando..." : "Salvar"}
+        </button>
       </div>
     </form>
   );

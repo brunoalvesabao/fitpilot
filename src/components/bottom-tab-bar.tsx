@@ -26,6 +26,7 @@ export function BottomTabBar() {
             <li key={href} className="flex-1">
               <Link
                 href={href}
+                prefetch
                 className={`flex h-touch min-h-touch flex-col items-center justify-center gap-0.5 text-xs ${
                   isActive ? "text-primary" : "text-fg-muted"
                 }`}

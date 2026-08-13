@@ -36,3 +36,40 @@ export function classificarCobranca({
   if (diasAtraso > 0) return { status: "atrasado", diasAtraso };
   return { status: "pendente", diasAtraso: 0 };
 }
+
+export type StatusAlunoDerivado = "ativo" | "vencendo" | "inadimplente";
+
+/**
+ * Pure, read-time equivalent of the status the DB `status` column should
+ * hold — mirrors recalcularStatusAlunos' rules without touching the
+ * database. Safe to call during render.
+ */
+export function derivarStatusAluno({
+  hoje,
+  diaVencimento,
+  pagouMesAnterior,
+  pagouMesAtual,
+  matriculadoAntesDoMesAnterior,
+}: {
+  hoje: { year: number; month: number; day: number };
+  diaVencimento: number | null;
+  pagouMesAnterior: boolean;
+  pagouMesAtual: boolean;
+  matriculadoAntesDoMesAnterior: boolean;
+}): StatusAlunoDerivado {
+  if (matriculadoAntesDoMesAnterior && !pagouMesAnterior) {
+    return "inadimplente";
+  }
+
+  if (diaVencimento != null && !pagouMesAtual) {
+    const diaEfetivo = diaVencimentoEfetivo(diaVencimento, hoje.year, hoje.month);
+    const hojeUtc = Date.UTC(hoje.year, hoje.month - 1, hoje.day);
+    const vencimentoUtc = Date.UTC(hoje.year, hoje.month - 1, diaEfetivo);
+    const diasParaVencer = Math.round((vencimentoUtc - hojeUtc) / 86_400_000);
+    if (diasParaVencer >= 0 && diasParaVencer <= 3) {
+      return "vencendo";
+    }
+  }
+
+  return "ativo";
+}

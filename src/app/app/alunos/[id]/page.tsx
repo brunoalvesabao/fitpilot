@@ -135,15 +135,6 @@ export default async function AlunoFichaPage({
     .map((r) => r.agendamento_origem)
     .filter((v): v is string => v != null);
 
-  let origemPorId = new Map<string, string>();
-  if (origemIds.length > 0) {
-    const { data: origens } = await supabase
-      .from("agendamento")
-      .select("id, data_hora")
-      .in("id", origemIds);
-    origemPorId = new Map((origens ?? []).map((o) => [o.id, o.data_hora]));
-  }
-
   const aulasLabel =
     aluno.aulas_por_mes != null ? `${concluidas}/${aluno.aulas_por_mes}` : `${concluidas}`;
 
@@ -159,13 +150,19 @@ export default async function AlunoFichaPage({
   });
   const competencias = meses.map(({ year, month }) => competenciaStr(year, month));
 
-  const { data: pagamentosData } = await supabase
-    .from("pagamento")
-    .select("competencia, valor, data_pagamento")
-    .eq("aluno_id", id)
-    .eq("profissional_id", user.id)
-    .in("competencia", competencias);
+  const [{ data: origens }, { data: pagamentosData }] = await Promise.all([
+    origemIds.length > 0
+      ? supabase.from("agendamento").select("id, data_hora").in("id", origemIds)
+      : Promise.resolve({ data: [] as { id: string; data_hora: string }[] }),
+    supabase
+      .from("pagamento")
+      .select("competencia, valor, data_pagamento")
+      .eq("aluno_id", id)
+      .eq("profissional_id", user.id)
+      .in("competencia", competencias),
+  ]);
 
+  const origemPorId = new Map((origens ?? []).map((o) => [o.id, o.data_hora]));
   const pagamentoPorCompetencia = new Map((pagamentosData ?? []).map((p) => [p.competencia, p]));
 
   const linhasPagamento: LinhaPagamentoMes[] = meses.map(({ year, month }) => {

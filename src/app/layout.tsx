@@ -15,12 +15,22 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "FitPilot",
   description: "Gestão para personal trainers autônomos",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "FitPilot",
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  viewportFit: "cover",
   themeColor: "#0c0d10",
   colorScheme: "dark",
 };

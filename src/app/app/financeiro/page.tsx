@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { spParts } from "@/lib/datetime";
 import { classificarCobranca, competenciaStr, diaVencimentoEfetivo } from "@/lib/financeiro";
-import { recalcularStatusAlunos } from "../alunos/actions";
 import { FinanceiroClient, type LinhaFinanceiro } from "./_components/financeiro-client";
 
 export default async function FinanceiroPage({
@@ -25,8 +24,6 @@ export default async function FinanceiroPage({
     );
   }
 
-  await recalcularStatusAlunos();
-
   const hoje = spParts(new Date());
   let ano = hoje.year;
   let mes = hoje.month;
@@ -38,27 +35,27 @@ export default async function FinanceiroPage({
 
   const competencia = competenciaStr(ano, mes);
 
-  const { data: alunosData } = await supabase
-    .from("aluno")
-    .select("id, nome, foto_url, valor_mensal, dia_vencimento")
-    .eq("profissional_id", user.id)
-    .eq("ativo", true)
-    .not("status", "in", "(pausa,ex_aluno,lead)")
-    .order("nome", { ascending: true });
+  const [{ data: alunosData }, { data: pagamentosData }] = await Promise.all([
+    supabase
+      .from("aluno")
+      .select("id, nome, foto_url, valor_mensal, dia_vencimento")
+      .eq("profissional_id", user.id)
+      .eq("ativo", true)
+      .not("status", "in", "(pausa,ex_aluno,lead)")
+      .order("nome", { ascending: true }),
+    supabase
+      .from("pagamento")
+      .select("aluno_id, valor, data_pagamento")
+      .eq("profissional_id", user.id)
+      .eq("competencia", competencia),
+  ]);
 
   const populacao = alunosData ?? [];
-
-  const { data: pagamentosData } = await supabase
-    .from("pagamento")
-    .select("aluno_id, valor, data_pagamento")
-    .eq("profissional_id", user.id)
-    .eq("competencia", competencia);
-
   const pagamentos = pagamentosData ?? [];
   const pagamentoPorAluno = new Map(pagamentos.map((p) => [p.aluno_id, p]));
 
   const recebido = pagamentos.reduce(
-    (sum, p) => (p.data_pagamento != null ? sum + p.valor : sum),
+    (sum, p) => (p.data_pagamento != null ? sum + (p.valor ?? 0) : sum),
     0,
   );
 

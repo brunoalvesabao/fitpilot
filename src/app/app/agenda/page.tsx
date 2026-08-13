@@ -33,16 +33,13 @@ export default async function AgendaPage({
   const [year, month, day] = dataParam.split("-").map(Number);
   const anchor = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
 
-  const { data: alunosData } = await supabase
+  const alunosQuery = supabase
     .from("aluno")
     .select("*")
     .eq("profissional_id", user.id)
     .eq("ativo", true);
-  const alunos = (alunosData ?? []) as Aluno[];
-  const alunosPorId = new Map(alunos.map((a) => [a.id, a]));
-  const alunosParaSheet = alunos.map((a) => ({ id: a.id, nome: a.nome }));
 
-  function toSessao(s: {
+  function toSessao(alunosPorId: Map<string, Aluno>, s: {
     id: string;
     data_hora: string;
     status: SessaoDia["status"];
@@ -66,7 +63,8 @@ export default async function AgendaPage({
   if (view === "dia") {
     const dayStart = startOfSpDay(anchor, 0);
     const dayEnd = startOfSpDay(anchor, 1);
-    const [{ data: sessoesData }, { data: configReposicao }] = await Promise.all([
+    const [{ data: alunosData }, { data: sessoesData }, { data: configReposicao }] = await Promise.all([
+      alunosQuery,
       supabase
         .from("agendamento")
         .select("*")
@@ -81,13 +79,15 @@ export default async function AgendaPage({
         .maybeSingle(),
     ]);
 
-    const sessoes = (sessoesData ?? []).map(toSessao);
+    const alunos = (alunosData ?? []) as Aluno[];
+    const alunosPorId = new Map(alunos.map((a) => [a.id, a]));
+    const sessoes = (sessoesData ?? []).map((s) => toSessao(alunosPorId, s));
 
     return (
       <AgendaClient
         view="dia"
         data={dataParam}
-        alunos={alunosParaSheet}
+        alunos={alunos.map((a) => ({ id: a.id, nome: a.nome }))}
         sessoesDia={sessoes}
         antecedenciaHoras={configReposicao?.antecedencia_horas ?? null}
       />
@@ -98,13 +98,19 @@ export default async function AgendaPage({
   const weekStart = startOfSpDay(anchor, -weekday);
   const weekEnd = startOfSpDay(anchor, -weekday + 7);
 
-  const { data: sessoesData } = await supabase
-    .from("agendamento")
-    .select("*")
-    .eq("profissional_id", user.id)
-    .gte("data_hora", weekStart.toISOString())
-    .lt("data_hora", weekEnd.toISOString())
-    .order("data_hora", { ascending: true });
+  const [{ data: alunosData }, { data: sessoesData }] = await Promise.all([
+    alunosQuery,
+    supabase
+      .from("agendamento")
+      .select("*")
+      .eq("profissional_id", user.id)
+      .gte("data_hora", weekStart.toISOString())
+      .lt("data_hora", weekEnd.toISOString())
+      .order("data_hora", { ascending: true }),
+  ]);
+
+  const alunos = (alunosData ?? []) as Aluno[];
+  const alunosPorId = new Map(alunos.map((a) => [a.id, a]));
 
   const dias = Array.from({ length: 7 }, (_, i) => {
     const dayStart = startOfSpDay(anchor, -weekday + i);
@@ -114,10 +120,15 @@ export default async function AgendaPage({
   for (const s of sessoesData ?? []) {
     const key = spDayKey(new Date(s.data_hora));
     const bucket = dias.find((d) => d.key === key);
-    if (bucket) bucket.sessoes.push(toSessao(s));
+    if (bucket) bucket.sessoes.push(toSessao(alunosPorId, s));
   }
 
   return (
-    <AgendaClient view="semana" data={dataParam} alunos={alunosParaSheet} sessoesSemana={dias} />
+    <AgendaClient
+      view="semana"
+      data={dataParam}
+      alunos={alunos.map((a) => ({ id: a.id, nome: a.nome }))}
+      sessoesSemana={dias}
+    />
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { SessionRow } from "@/components/session-row";
@@ -51,13 +51,18 @@ export function DayAgendaList({
   >({ mode: "closed" });
   const [faltaSessao, setFaltaSessao] = useState<SessaoDia | null>(null);
   const [, startTransition] = useTransition();
+  const [sessoesOtimistas, aplicarStatusOtimista] = useOptimistic(
+    sessoes,
+    (state, update: { id: string; status: StatusAgendamento }) =>
+      state.map((s) => (s.id === update.id ? { ...s, status: update.status } : s)),
+  );
 
   const grupos: { periodo: "manha" | "tarde" | "noite"; sessoes: SessaoDia[] }[] = (
     ["manha", "tarde", "noite"] as const
   )
     .map((periodo) => ({
       periodo,
-      sessoes: sessoes.filter((s) => periodoDe(s.dataHora) === periodo),
+      sessoes: sessoesOtimistas.filter((s) => periodoDe(s.dataHora) === periodo),
     }))
     .filter((grupo) => grupo.sessoes.length > 0);
 
@@ -80,15 +85,17 @@ export function DayAgendaList({
 
   function handleCheck(sessao: SessaoDia) {
     const novoStatus = sessao.status === "realizada" ? "agendado" : "realizada";
-    startTransition(() => {
-      setAgendamentoStatus(sessao.id, novoStatus);
+    startTransition(async () => {
+      aplicarStatusOtimista({ id: sessao.id, status: novoStatus });
+      await setAgendamentoStatus(sessao.id, novoStatus);
     });
   }
 
   function handleFaltaClick(sessao: SessaoDia) {
     if (sessao.status === "falta" || sessao.status === "cancelado_com_aviso") {
-      startTransition(() => {
-        setAgendamentoStatus(sessao.id, "agendado");
+      startTransition(async () => {
+        aplicarStatusOtimista({ id: sessao.id, status: "agendado" });
+        await setAgendamentoStatus(sessao.id, "agendado");
       });
     } else {
       setFaltaSessao(sessao);
@@ -106,7 +113,7 @@ export function DayAgendaList({
         </div>
       )}
 
-      {sessoes.length === 0 ? (
+      {sessoesOtimistas.length === 0 ? (
         <div className="flex flex-1 items-center justify-center px-8 py-8 text-center">
           <p className="text-fg-muted">{emptyLabel}</p>
         </div>
@@ -158,8 +165,9 @@ export function DayAgendaList({
           antecedenciaHoras={antecedenciaHoras}
           onClose={() => setFaltaSessao(null)}
           onEscolha={(status) => {
-            startTransition(() => {
-              setAgendamentoStatus(faltaSessao.id, status);
+            startTransition(async () => {
+              aplicarStatusOtimista({ id: faltaSessao.id, status });
+              await setAgendamentoStatus(faltaSessao.id, status);
             });
             setFaltaSessao(null);
           }}
