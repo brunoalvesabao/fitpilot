@@ -40,7 +40,7 @@ export default async function FinanceiroPage({
 
   const { data: alunosData } = await supabase
     .from("aluno")
-    .select("id, nome, foto_url, valor_mensal, dia_vencimento, status")
+    .select("id, nome, foto_url, valor_mensal, dia_vencimento")
     .eq("profissional_id", user.id)
     .eq("ativo", true)
     .not("status", "in", "(pausa,ex_aluno,lead)")
@@ -87,11 +87,7 @@ export default async function FinanceiroPage({
     };
   });
 
-  const esperado = populacao.reduce(
-    (sum, aluno) =>
-      aluno.status === "ativo" || aluno.status === "vencendo" ? sum + (aluno.valor_mensal ?? 0) : sum,
-    0,
-  );
+  const esperado = populacao.reduce((sum, aluno) => sum + (aluno.valor_mensal ?? 0), 0);
   const aReceber = linhas.reduce(
     (sum, linha) => (linha.status === "pendente" ? sum + (linha.valorMensal ?? 0) : sum),
     0,
