@@ -7,6 +7,13 @@ import { maskPhoneBR } from "@/lib/format";
 import { emptyFormState, type FormState } from "../form-state";
 import type { Aluno, DiaSemana, HorarioFixo } from "@/types/database";
 
+export type AlunoFormInitial = Pick<
+  Aluno,
+  "nome" | "telefone" | "valor_mensal" | "aulas_por_mes" | "dia_vencimento" | "observacoes"
+>;
+
+export type HorarioFormInitial = Pick<HorarioFixo, "dia_semana" | "hora" | "local">;
+
 const DIAS: { dia: DiaSemana; letra: string; nomeCompleto: string }[] = [
   { dia: 1, letra: "S", nomeCompleto: "Segunda-feira" },
   { dia: 2, letra: "T", nomeCompleto: "Terça-feira" },
@@ -46,8 +53,8 @@ export function AlunoForm({
 }: {
   title: string;
   action: FormAction;
-  initialAluno?: Aluno | null;
-  initialHorarios?: HorarioFixo[];
+  initialAluno?: AlunoFormInitial | null;
+  initialHorarios?: HorarioFormInitial[];
 }) {
   const [state, formAction, pending] = useActionState(action, emptyFormState);
 
@@ -353,7 +360,7 @@ export function AlunoForm({
 
       <div
         className="fixed inset-x-0 z-40 border-t border-border bg-surface px-4 pb-3 pt-3"
-        style={{ bottom: "calc(var(--size-touch) + env(safe-area-inset-bottom))" }}
+        style={{ bottom: "calc(var(--size-tabbar) + env(safe-area-inset-bottom))" }}
       >
         <button
           type="submit"

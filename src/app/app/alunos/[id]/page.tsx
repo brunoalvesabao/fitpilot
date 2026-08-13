@@ -12,7 +12,7 @@ import { classificarCobranca, competenciaStr } from "@/lib/financeiro";
 import { DesativarAlunoButton } from "../_components/desativar-aluno-button";
 import { UsarReposicaoButton } from "../_components/usar-reposicao-button";
 import { PagamentosList, type LinhaPagamentoMes } from "../_components/pagamentos-list";
-import type { Aluno, StatusAgendamento } from "@/types/database";
+import type { StatusAgendamento } from "@/types/database";
 
 const HISTORICO_PAGE_SIZE = 10;
 
@@ -65,7 +65,7 @@ export default async function AlunoFichaPage({
 
   const alunoResult = await supabase
     .from("aluno")
-    .select("*")
+    .select("id, nome, telefone, foto_url, valor_mensal, dia_vencimento, aulas_por_mes, observacoes, criado_em")
     .eq("id", id)
     .eq("profissional_id", user.id)
     .maybeSingle();
@@ -80,7 +80,7 @@ export default async function AlunoFichaPage({
     );
   }
 
-  const aluno = alunoResult.data as Aluno | null;
+  const aluno = alunoResult.data;
   if (!aluno) {
     notFound();
   }
@@ -231,6 +231,8 @@ export default async function AlunoFichaPage({
             {tel && (
               <a
                 href={tel}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-touch items-center gap-2 rounded-full border border-border px-4 text-sm font-medium"
               >
                 <Phone className="size-4" aria-hidden />

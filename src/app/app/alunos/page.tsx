@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { AlunosListClient } from "./_components/alunos-list-client";
-import type { Aluno } from "@/types/database";
 
 export default async function AlunosPage() {
   const supabase = await createClient();
@@ -22,7 +21,7 @@ export default async function AlunosPage() {
 
   const alunosResult = await supabase
     .from("aluno")
-    .select("*")
+    .select("id, nome, foto_url, status, valor_mensal, dia_vencimento, aulas_por_mes, ativo")
     .eq("profissional_id", user.id)
     .order("nome", { ascending: true });
 
@@ -37,7 +36,7 @@ export default async function AlunosPage() {
     );
   }
 
-  const alunos = (alunosResult.data ?? []) as Aluno[];
+  const alunos = alunosResult.data ?? [];
   const alunoIds = alunos.map((a) => a.id);
 
   const reposicoesPorAluno: Record<string, number> = {};

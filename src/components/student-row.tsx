@@ -5,11 +5,16 @@ import { StatusPill, Pill } from "@/components/status-pill";
 import { planoResumo } from "@/lib/format";
 import type { Aluno } from "@/types/database";
 
+export type AlunoListItem = Pick<
+  Aluno,
+  "id" | "nome" | "foto_url" | "status" | "valor_mensal" | "dia_vencimento" | "aulas_por_mes" | "ativo"
+>;
+
 export function StudentRow({
   aluno,
   reposicoesCount,
 }: {
-  aluno: Aluno;
+  aluno: AlunoListItem;
   reposicoesCount: number;
 }) {
   return (

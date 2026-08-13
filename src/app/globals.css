@@ -18,6 +18,7 @@
 
   --radius-card: 16px;
   --size-touch: 44px;
+  --size-tabbar: 56px;
 }
 
 @theme inline {
@@ -39,6 +40,7 @@
 
   --radius-card: var(--radius-card);
   --spacing-touch: var(--size-touch);
+  --spacing-tabbar: var(--size-tabbar);
 }
 
 html {

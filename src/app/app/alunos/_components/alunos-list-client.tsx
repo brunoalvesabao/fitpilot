@@ -4,8 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Plus, Search } from "lucide-react";
 import { SegmentedControl } from "@/components/segmented-control";
-import { StudentRow } from "@/components/student-row";
-import type { Aluno } from "@/types/database";
+import { StudentRow, type AlunoListItem } from "@/components/student-row";
 
 type Filtro = "todos" | "pendentes" | "inativos";
 
@@ -19,7 +18,7 @@ export function AlunosListClient({
   alunos,
   reposicoesPorAluno,
 }: {
-  alunos: Aluno[];
+  alunos: AlunoListItem[];
   reposicoesPorAluno: Record<string, number>;
 }) {
   const [busca, setBusca] = useState("");
@@ -47,7 +46,7 @@ export function AlunosListClient({
   }, [alunos, busca, filtro]);
 
   const grupos = useMemo(() => {
-    const groups: { letra: string; alunos: Aluno[] }[] = [];
+    const groups: { letra: string; alunos: AlunoListItem[] }[] = [];
     for (const aluno of filtrados) {
       const letra = aluno.nome.trim()[0]?.toUpperCase() ?? "#";
       const ultimo = groups[groups.length - 1];
@@ -119,7 +118,7 @@ export function AlunosListClient({
         href="/app/alunos/novo"
         aria-label="Adicionar aluno"
         className="fixed right-4 z-40 flex size-14 items-center justify-center rounded-full bg-primary text-bg"
-        style={{ bottom: "calc(var(--size-touch) + env(safe-area-inset-bottom) + 16px)" }}
+        style={{ bottom: "calc(var(--size-tabbar) + env(safe-area-inset-bottom) + 16px)" }}
       >
         <Plus className="size-6" aria-hidden />
       </Link>

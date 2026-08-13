@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { AlunoForm } from "../../_components/aluno-form";
+import { AlunoForm, type AlunoFormInitial, type HorarioFormInitial } from "../../_components/aluno-form";
 import { updateAluno } from "../../actions";
-import type { Aluno, HorarioFixo } from "@/types/database";
 
 export default async function EditarAlunoPage({
   params,
@@ -29,11 +28,11 @@ export default async function EditarAlunoPage({
   const [alunoResult, horariosResult] = await Promise.all([
     supabase
       .from("aluno")
-      .select("*")
+      .select("nome, telefone, valor_mensal, aulas_por_mes, dia_vencimento, observacoes")
       .eq("id", id)
       .eq("profissional_id", user.id)
       .maybeSingle(),
-    supabase.from("horario_fixo").select("*").eq("aluno_id", id),
+    supabase.from("horario_fixo").select("dia_semana, hora, local").eq("aluno_id", id),
   ]);
 
   if (alunoResult.error) {
@@ -46,12 +45,12 @@ export default async function EditarAlunoPage({
     );
   }
 
-  const aluno = alunoResult.data as Aluno | null;
+  const aluno: AlunoFormInitial | null = alunoResult.data;
   if (!aluno) {
     notFound();
   }
 
-  const horarios = (horariosResult.data ?? []) as HorarioFixo[];
+  const horarios: HorarioFormInitial[] = horariosResult.data ?? [];
 
   return (
     <AlunoForm

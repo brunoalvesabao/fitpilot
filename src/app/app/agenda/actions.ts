@@ -31,7 +31,7 @@ export async function generateUpcomingAgendamentos(): Promise<void> {
 
   const { data: horarios } = await supabase
     .from("horario_fixo")
-    .select("*")
+    .select("aluno_id, dia_semana, hora, local")
     .in("aluno_id", alunoIds);
 
   if (!horarios || horarios.length === 0) return;

@@ -5,6 +5,8 @@ import { planoResumo } from "@/lib/format";
 import type { Aluno } from "@/types/database";
 import type { SessaoDia } from "./_components/day-agenda-list";
 
+type AlunoAgendaItem = Pick<Aluno, "id" | "nome" | "valor_mensal" | "dia_vencimento" | "aulas_por_mes">;
+
 export default async function AgendaPage({
   searchParams,
 }: {
@@ -35,11 +37,11 @@ export default async function AgendaPage({
 
   const alunosQuery = supabase
     .from("aluno")
-    .select("*")
+    .select("id, nome, valor_mensal, dia_vencimento, aulas_por_mes")
     .eq("profissional_id", user.id)
     .eq("ativo", true);
 
-  function toSessao(alunosPorId: Map<string, Aluno>, s: {
+  function toSessao(alunosPorId: Map<string, AlunoAgendaItem>, s: {
     id: string;
     data_hora: string;
     status: SessaoDia["status"];
@@ -67,7 +69,7 @@ export default async function AgendaPage({
       alunosQuery,
       supabase
         .from("agendamento")
-        .select("*")
+        .select("id, data_hora, status, duracao_min, local, aluno_id")
         .eq("profissional_id", user.id)
         .gte("data_hora", dayStart.toISOString())
         .lt("data_hora", dayEnd.toISOString())
@@ -79,7 +81,7 @@ export default async function AgendaPage({
         .maybeSingle(),
     ]);
 
-    const alunos = (alunosData ?? []) as Aluno[];
+    const alunos = alunosData ?? [];
     const alunosPorId = new Map(alunos.map((a) => [a.id, a]));
     const sessoes = (sessoesData ?? []).map((s) => toSessao(alunosPorId, s));
 
@@ -102,14 +104,14 @@ export default async function AgendaPage({
     alunosQuery,
     supabase
       .from("agendamento")
-      .select("*")
+      .select("id, data_hora, status, duracao_min, local, aluno_id")
       .eq("profissional_id", user.id)
       .gte("data_hora", weekStart.toISOString())
       .lt("data_hora", weekEnd.toISOString())
       .order("data_hora", { ascending: true }),
   ]);
 
-  const alunos = (alunosData ?? []) as Aluno[];
+  const alunos = alunosData ?? [];
   const alunosPorId = new Map(alunos.map((a) => [a.id, a]));
 
   const dias = Array.from({ length: 7 }, (_, i) => {

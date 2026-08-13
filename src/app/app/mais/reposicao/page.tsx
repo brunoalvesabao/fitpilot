@@ -19,7 +19,7 @@ export default async function ConfigReposicaoPage() {
 
   const { data: config } = await supabase
     .from("config_reposicao")
-    .select("*")
+    .select("permitir, antecedencia_horas, expira_mes_seguinte")
     .eq("profissional_id", user.id)
     .maybeSingle();
 

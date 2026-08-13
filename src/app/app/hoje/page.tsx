@@ -15,7 +15,6 @@ import {
   spDayKey,
 } from "@/lib/datetime";
 import { formatCurrencyBRL, planoResumo } from "@/lib/format";
-import type { Aluno } from "@/types/database";
 
 export default async function HojePage() {
   const supabase = await createClient();
@@ -65,10 +64,14 @@ export default async function HojePage() {
       .eq("status", "falta")
       .gte("data_hora", monthStart.toISOString())
       .lt("data_hora", monthEnd.toISOString()),
-    supabase.from("aluno").select("*").eq("profissional_id", user.id).eq("ativo", true),
+    supabase
+      .from("aluno")
+      .select("id, nome, valor_mensal, dia_vencimento, aulas_por_mes")
+      .eq("profissional_id", user.id)
+      .eq("ativo", true),
     supabase
       .from("agendamento")
-      .select("*")
+      .select("id, data_hora, status, duracao_min, local, aluno_id")
       .eq("profissional_id", user.id)
       .gte("data_hora", todayStart.toISOString())
       .lt("data_hora", todayEnd.toISOString())
@@ -82,7 +85,7 @@ export default async function HojePage() {
 
   const nomeProfissional = profissionalResult.data?.nome ?? "";
   const antecedenciaHoras = configReposicaoResult.data?.antecedencia_horas ?? null;
-  const alunos = (alunosResult.data ?? []) as Aluno[];
+  const alunos = alunosResult.data ?? [];
   const alunosPorId = new Map(alunos.map((a) => [a.id, a]));
 
   // Candidates whose due date has arrived this month (today or earlier) —
