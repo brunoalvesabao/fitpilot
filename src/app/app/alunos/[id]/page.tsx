@@ -7,9 +7,11 @@ import { Avatar } from "@/components/avatar";
 import { StatTile } from "@/components/stat-tile";
 import { statusBarColor } from "@/components/session-row";
 import { formatCurrencyBRL, formatDateBR, whatsappHref, telHref } from "@/lib/format";
-import { spParts, startOfSpMonth } from "@/lib/datetime";
+import { spParts, startOfSpMonth, formatMesAnoPtBR } from "@/lib/datetime";
+import { classificarCobranca, competenciaStr } from "@/lib/financeiro";
 import { DesativarAlunoButton } from "../_components/desativar-aluno-button";
 import { UsarReposicaoButton } from "../_components/usar-reposicao-button";
+import { PagamentosList, type LinhaPagamentoMes } from "../_components/pagamentos-list";
 import type { Aluno, StatusAgendamento } from "@/types/database";
 
 const HISTORICO_PAGE_SIZE = 10;
@@ -145,6 +147,48 @@ export default async function AlunoFichaPage({
   const aulasLabel =
     aluno.aulas_por_mes != null ? `${concluidas}/${aluno.aulas_por_mes}` : `${concluidas}`;
 
+  const hoje = spParts(now);
+  const meses = Array.from({ length: 12 }, (_, i) => {
+    let m = hoje.month - i;
+    let y = hoje.year;
+    while (m < 1) {
+      m += 12;
+      y -= 1;
+    }
+    return { year: y, month: m };
+  });
+  const competencias = meses.map(({ year, month }) => competenciaStr(year, month));
+
+  const { data: pagamentosData } = await supabase
+    .from("pagamento")
+    .select("competencia, valor, data_pagamento")
+    .eq("aluno_id", id)
+    .eq("profissional_id", user.id)
+    .in("competencia", competencias);
+
+  const pagamentoPorCompetencia = new Map((pagamentosData ?? []).map((p) => [p.competencia, p]));
+
+  const linhasPagamento: LinhaPagamentoMes[] = meses.map(({ year, month }) => {
+    const competencia = competenciaStr(year, month);
+    const pagamento = pagamentoPorCompetencia.get(competencia);
+    const pago = pagamento?.data_pagamento != null;
+    const { status } = classificarCobranca({
+      hoje,
+      diaVencimento: aluno.dia_vencimento,
+      ano: year,
+      mes: month,
+      pago,
+    });
+
+    return {
+      competencia,
+      mesLabel: formatMesAnoPtBR(year, month),
+      valor: pago ? (pagamento?.valor ?? null) : aluno.valor_mensal,
+      status,
+      dataPagamento: pagamento?.data_pagamento ?? null,
+    };
+  });
+
   const whatsapp = whatsappHref(aluno.telefone);
   const tel = telHref(aluno.telefone);
 
@@ -220,10 +264,13 @@ export default async function AlunoFichaPage({
         </div>
 
         <section className="flex flex-col gap-1 rounded-card border border-border bg-surface p-4">
-          <h2 className="text-sm font-semibold">Pagamentos</h2>
-          <p className="text-sm text-fg-muted">
-            Em breve — controle de pagamentos chega na semana 5.
-          </p>
+          <h2 className="mb-2 text-sm font-semibold">Pagamentos</h2>
+          <PagamentosList
+            alunoId={aluno.id}
+            alunoNome={aluno.nome}
+            valorMensal={aluno.valor_mensal}
+            linhas={linhasPagamento}
+          />
         </section>
 
         <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">

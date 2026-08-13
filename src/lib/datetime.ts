@@ -103,6 +103,17 @@ export function formatIsoDatePtBR(isoDate: string): string {
   return `${day} de ${MONTH_NAMES[month - 1]} de ${year}`;
 }
 
+/** Formats a plain "YYYY-MM-DD" value as "dd/mm", without any timezone conversion. */
+export function formatDiaMesPtBR(isoDate: string): string {
+  const [, month, day] = isoDate.split("-").map(Number);
+  return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}`;
+}
+
+export function formatMesAnoPtBR(year: number, month: number): string {
+  const nome = MONTH_NAMES[month - 1];
+  return `${nome.charAt(0).toUpperCase()}${nome.slice(1)} ${year}`;
+}
+
 export function formatDatePtBRExtenso(date: Date): string {
   const { day, month } = spParts(date);
   const weekday = spWeekday(date);

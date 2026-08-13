@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { spParts } from "@/lib/datetime";
+import { competenciaStr, diaVencimentoEfetivo } from "@/lib/financeiro";
 import type { DiaSemana } from "@/types/database";
 import type { FormState } from "./form-state";
 
@@ -236,4 +238,90 @@ export async function usarReposicao(creditoId: string): Promise<void> {
   await supabase.from("credito_reposicao").update({ usado: true }).eq("id", creditoId);
 
   revalidatePath(`/app/alunos/${credito.aluno_id}`);
+}
+
+export async function recalcularStatusAlunos(): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: alunosData } = await supabase
+    .from("aluno")
+    .select("id, dia_vencimento, criado_em")
+    .eq("profissional_id", user.id)
+    .eq("ativo", true)
+    .not("status", "in", "(pausa,ex_aluno,lead)");
+
+  const alunos = alunosData ?? [];
+  if (alunos.length === 0) return;
+
+  const hoje = spParts(new Date());
+  const mesAnterior = hoje.month === 1 ? { year: hoje.year - 1, month: 12 } : { year: hoje.year, month: hoje.month - 1 };
+  const competenciaAtual = competenciaStr(hoje.year, hoje.month);
+  const competenciaAnterior = competenciaStr(mesAnterior.year, mesAnterior.month);
+  const alunoIds = alunos.map((a) => a.id);
+
+  const [{ data: pagosAnterior }, { data: pagosAtual }] = await Promise.all([
+    supabase
+      .from("pagamento")
+      .select("aluno_id")
+      .eq("profissional_id", user.id)
+      .eq("competencia", competenciaAnterior)
+      .not("data_pagamento", "is", null)
+      .in("aluno_id", alunoIds),
+    supabase
+      .from("pagamento")
+      .select("aluno_id")
+      .eq("profissional_id", user.id)
+      .eq("competencia", competenciaAtual)
+      .not("data_pagamento", "is", null)
+      .in("aluno_id", alunoIds),
+  ]);
+
+  const pagouAnteriorSet = new Set((pagosAnterior ?? []).map((p) => p.aluno_id));
+  const pagouAtualSet = new Set((pagosAtual ?? []).map((p) => p.aluno_id));
+
+  const idsInadimplente: string[] = [];
+  const idsVencendo: string[] = [];
+  const idsAtivo: string[] = [];
+
+  for (const aluno of alunos) {
+    const matriculadoAntesDoMesAnterior = aluno.criado_em < competenciaAnterior;
+
+    if (matriculadoAntesDoMesAnterior && !pagouAnteriorSet.has(aluno.id)) {
+      idsInadimplente.push(aluno.id);
+      continue;
+    }
+
+    if (aluno.dia_vencimento != null && !pagouAtualSet.has(aluno.id)) {
+      const diaEfetivo = diaVencimentoEfetivo(aluno.dia_vencimento, hoje.year, hoje.month);
+      const hojeUtc = Date.UTC(hoje.year, hoje.month - 1, hoje.day);
+      const vencimentoUtc = Date.UTC(hoje.year, hoje.month - 1, diaEfetivo);
+      const diasParaVencer = Math.round((vencimentoUtc - hojeUtc) / 86_400_000);
+      if (diasParaVencer >= 0 && diasParaVencer <= 3) {
+        idsVencendo.push(aluno.id);
+        continue;
+      }
+    }
+
+    idsAtivo.push(aluno.id);
+  }
+
+  await Promise.all([
+    idsInadimplente.length > 0
+      ? supabase.from("aluno").update({ status: "inadimplente" }).in("id", idsInadimplente)
+      : Promise.resolve(),
+    idsVencendo.length > 0
+      ? supabase.from("aluno").update({ status: "vencendo" }).in("id", idsVencendo)
+      : Promise.resolve(),
+    idsAtivo.length > 0
+      ? supabase.from("aluno").update({ status: "ativo" }).in("id", idsAtivo)
+      : Promise.resolve(),
+  ]);
+
+  revalidatePath("/app/alunos");
+  revalidatePath("/app/financeiro");
+  revalidatePath("/app/hoje");
 }
