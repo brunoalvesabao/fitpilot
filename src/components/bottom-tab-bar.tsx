@@ -16,20 +16,23 @@ export function BottomTabBar() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 min-h-tabbar border-t border-border bg-surface/80 backdrop-blur-md"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className="fixed inset-x-0 bottom-0 z-50 w-full border-t backdrop-blur-md"
+      style={{
+        borderTopColor: "rgba(255,255,255,0.08)",
+        backgroundColor: "rgba(12,13,16,0.92)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
     >
-      <ul className="mx-auto grid h-tabbar max-w-md grid-cols-4">
+      <ul className="grid h-tabbar w-full grid-cols-4">
         {tabs.map(({ href, label, icon: Icon }) => {
           const isActive = pathname.startsWith(href);
           return (
-            <li key={href} className="flex min-h-[56px]">
+            <li key={href} className="flex h-full">
               <Link
                 href={href}
                 prefetch
-                className={`flex w-full flex-1 flex-col items-center justify-center gap-1 transition-transform duration-100 active:scale-95 active:bg-white/5 ${
-                  isActive ? "text-primary" : "text-fg-muted"
-                }`}
+                className="flex h-full w-full flex-col items-center justify-center gap-1 transition-transform duration-100 active:scale-95 active:bg-white/5"
+                style={{ color: isActive ? "#22C55E" : "rgba(255,255,255,0.5)" }}
                 aria-current={isActive ? "page" : undefined}
               >
                 <Icon className="size-[26px]" aria-hidden />
