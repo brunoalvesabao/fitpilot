@@ -15,7 +15,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "FitPilot",
   description: "Gestão para personal trainers autônomos",
-  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -23,6 +22,13 @@ export const metadata: Metadata = {
   },
   icons: {
     apple: "/icons/apple-touch-icon.png",
+  },
+  other: {
+    // Next.js's appleWebApp.capable only emits the unprefixed
+    // "mobile-web-app-capable" tag; iOS Safari's standalone-mode
+    // detection still keys off the Apple-prefixed tag specifically,
+    // so it has to be added explicitly.
+    "apple-mobile-web-app-capable": "yes",
   },
 };
 
