@@ -28,9 +28,19 @@ export async function updateSession(request: NextRequest) {
 
   // IMPORTANT: avoid writing logic between createServerClient and getUser().
   // A simple mistake could make it very hard to debug session refresh issues.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Wrapped in try/catch so a transient Supabase outage (e.g. a paused
+  // project) degrades to "treat as logged out" instead of crashing the
+  // middleware on every single request — which would take down the whole
+  // site, including the error boundaries further down the request.
+  let user = null;
+  try {
+    const {
+      data: { user: fetchedUser },
+    } = await supabase.auth.getUser();
+    user = fetchedUser;
+  } catch (error) {
+    console.error("Supabase auth check failed in middleware:", error);
+  }
 
   const { pathname } = request.nextUrl;
   const isProtectedRoute = pathname.startsWith("/app");
