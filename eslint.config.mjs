@@ -12,8 +12,6 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // App Atlas (projeto separado, com tooling próprio)
-    "atlas/**",
   ]),
 ]);
 
