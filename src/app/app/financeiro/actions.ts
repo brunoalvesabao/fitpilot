@@ -11,14 +11,14 @@ export async function registrarPagamento(input: {
   valor: number;
   dataPagamento: string;
   metodo: MetodoPagamento;
-}): Promise<void> {
+}): Promise<{ success: boolean }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return;
+  if (!user) return { success: false };
 
-  await supabase.from("pagamento").upsert(
+  const { error } = await supabase.from("pagamento").upsert(
     {
       profissional_id: user.id,
       aluno_id: input.alunoId,
@@ -30,8 +30,14 @@ export async function registrarPagamento(input: {
     { onConflict: "aluno_id,competencia" },
   );
 
+  if (error) {
+    console.error("Failed to register pagamento:", error);
+    return { success: false };
+  }
+
   await recalcularStatusAlunos();
 
   revalidatePath("/app/financeiro");
   revalidatePath(`/app/alunos/${input.alunoId}`);
+  return { success: true };
 }

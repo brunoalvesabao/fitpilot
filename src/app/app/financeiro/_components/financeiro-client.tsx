@@ -6,8 +6,8 @@ import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { SegmentedControl } from "@/components/segmented-control";
 import { MonthPicker } from "@/components/month-picker";
-import { formatCurrencyBRL, formatDateBR } from "@/lib/format";
-import { formatMesAnoPtBR } from "@/lib/datetime";
+import { formatCurrencyBRL } from "@/lib/format";
+import { formatMesAnoPtBR, formatIsoDatePtBR } from "@/lib/datetime";
 import { MarcarPagamentoSheet } from "./marcar-pagamento-sheet";
 import type { StatusCobranca } from "@/lib/financeiro";
 
@@ -176,7 +176,7 @@ function LinhaAluno({
 
   let secundaria: string;
   if (linha.status === "pago") {
-    secundaria = linha.dataPagamento ? `Pago em ${formatDateBR(linha.dataPagamento)}` : "Pago";
+    secundaria = linha.dataPagamento ? `Pago em ${formatIsoDatePtBR(linha.dataPagamento)}` : "Pago";
   } else if (linha.status === "atrasado") {
     secundaria = `${linha.diasAtraso} ${linha.diasAtraso === 1 ? "dia" : "dias"} em atraso`;
   } else {

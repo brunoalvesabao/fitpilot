@@ -19,19 +19,6 @@ export async function generateUpcomingAgendamentos(): Promise<void> {
   const now = new Date();
   const rangeStart = startOfSpDay(now, 0);
   const rangeEnd = startOfSpDay(now, GERACAO_DIAS);
-  const lastDayStart = startOfSpDay(now, GERACAO_DIAS - 1);
-
-  // Cheap guard: if agendamentos already exist for the last day of the
-  // rolling window, generation already ran for today — skip the full
-  // multi-query pass below on every single Hoje render.
-  const { count: jaGerado } = await supabase
-    .from("agendamento")
-    .select("id", { count: "exact", head: true })
-    .eq("profissional_id", user.id)
-    .gte("data_hora", lastDayStart.toISOString())
-    .lt("data_hora", rangeEnd.toISOString());
-
-  if (jaGerado && jaGerado > 0) return;
 
   const { data: alunos } = await supabase
     .from("aluno")
@@ -49,18 +36,10 @@ export async function generateUpcomingAgendamentos(): Promise<void> {
 
   if (!horarios || horarios.length === 0) return;
 
-  const { data: bloqueios } = await supabase
-    .from("bloqueio")
-    .select("inicio, fim")
-    .eq("profissional_id", user.id)
-    .lt("inicio", rangeEnd.toISOString())
-    .gt("fim", rangeStart.toISOString());
-
-  const bloqueiosRanges = (bloqueios ?? []).map((b) => ({
-    inicio: new Date(b.inicio).getTime(),
-    fim: new Date(b.fim).getTime(),
-  }));
-
+  // Needed regardless of whether anything ends up missing — this is what
+  // lets the check below be precise (per student, per slot) instead of a
+  // "some row exists somewhere" heuristic that silently stops generating
+  // for a student added after an earlier run already covered the window.
   const { data: existentes } = await supabase
     .from("agendamento")
     .select("aluno_id, data_hora")
@@ -72,13 +51,14 @@ export async function generateUpcomingAgendamentos(): Promise<void> {
     (existentes ?? []).map((e) => `${e.aluno_id}|${new Date(e.data_hora).getTime()}`),
   );
 
-  const novos: {
+  const candidatos: {
     profissional_id: string;
     aluno_id: string;
     data_hora: string;
     duracao_min: number;
     status: "agendado";
     local: string | null;
+    dataHoraMs: number;
   }[] = [];
 
   for (let offset = 0; offset < GERACAO_DIAS; offset++) {
@@ -95,22 +75,45 @@ export async function generateUpcomingAgendamentos(): Promise<void> {
 
       if (existentesSet.has(key)) continue;
 
-      const dentroDeBloqueio = bloqueiosRanges.some(
-        (b) => dataHora.getTime() >= b.inicio && dataHora.getTime() < b.fim,
-      );
-      if (dentroDeBloqueio) continue;
-
-      novos.push({
+      candidatos.push({
         profissional_id: user.id,
         aluno_id: horario.aluno_id,
         data_hora: dataHora.toISOString(),
         duracao_min: DURACAO_PADRAO_MIN,
         status: "agendado",
         local: horario.local,
+        dataHoraMs: dataHora.getTime(),
       });
       existentesSet.add(key);
     }
   }
+
+  if (candidatos.length === 0) return;
+
+  const { data: bloqueios } = await supabase
+    .from("bloqueio")
+    .select("inicio, fim")
+    .eq("profissional_id", user.id)
+    .lt("inicio", rangeEnd.toISOString())
+    .gt("fim", rangeStart.toISOString());
+
+  const bloqueiosRanges = (bloqueios ?? []).map((b) => ({
+    inicio: new Date(b.inicio).getTime(),
+    fim: new Date(b.fim).getTime(),
+  }));
+
+  const novos = candidatos
+    .filter(
+      (c) => !bloqueiosRanges.some((b) => c.dataHoraMs >= b.inicio && c.dataHoraMs < b.fim),
+    )
+    .map((c) => ({
+      profissional_id: c.profissional_id,
+      aluno_id: c.aluno_id,
+      data_hora: c.data_hora,
+      duracao_min: c.duracao_min,
+      status: c.status,
+      local: c.local,
+    }));
 
   if (novos.length > 0) {
     await supabase.from("agendamento").insert(novos);

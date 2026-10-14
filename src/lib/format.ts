@@ -1,3 +1,5 @@
+import { TIME_ZONE } from "@/lib/datetime";
+
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
@@ -8,9 +10,10 @@ export function formatCurrencyBRL(value: number | null | undefined): string {
   return currencyFormatter.format(value);
 }
 
+/** Formats a real timestamp (e.g. a timestamptz column) as a BR long date, in America/Sao_Paulo. */
 export function formatDateBR(iso: string | null | undefined): string {
   if (!iso) return "-";
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "long" }).format(
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeZone: TIME_ZONE }).format(
     new Date(iso),
   );
 }

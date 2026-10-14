@@ -32,6 +32,7 @@ export function MarcarPagamentoSheet({
   const [dataPagamento, setDataPagamento] = useState(spDayKey(new Date()));
   const [metodo, setMetodo] = useState<MetodoPagamento>("pix");
   const [pending, startTransition] = useTransition();
+  const [erro, setErro] = useState(false);
 
   const valorNumerico = Number(valor.replace(",", "."));
   const valido =
@@ -43,15 +44,20 @@ export function MarcarPagamentoSheet({
 
   function confirmar() {
     if (!valido) return;
+    setErro(false);
     startTransition(async () => {
-      await registrarPagamento({
+      const resultado = await registrarPagamento({
         alunoId,
         competencia: `${competenciaMes}-01`,
         valor: valorNumerico,
         dataPagamento,
         metodo,
       });
-      onClose();
+      if (resultado.success) {
+        onClose();
+      } else {
+        setErro(true);
+      }
     });
   }
 
@@ -124,6 +130,12 @@ export function MarcarPagamentoSheet({
             <span className="text-sm text-fg-muted">Método</span>
             <SegmentedControl options={metodoOptions} value={metodo} onChange={setMetodo} />
           </div>
+
+          {erro && (
+            <p className="text-sm text-red">
+              Não foi possível registrar o pagamento. Tente novamente.
+            </p>
+          )}
 
           <button
             type="button"

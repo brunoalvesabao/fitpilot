@@ -5,9 +5,10 @@ import { MessageCircle, Phone } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/components/avatar";
 import { StatTile } from "@/components/stat-tile";
+import { Pill } from "@/components/status-pill";
 import { statusBarColor } from "@/components/session-row";
 import { formatCurrencyBRL, formatDateBR, whatsappHref, telHref } from "@/lib/format";
-import { spParts, startOfSpMonth, formatMesAnoPtBR } from "@/lib/datetime";
+import { spParts, spDayKey, startOfSpMonth, formatMesAnoPtBR, formatIsoDatePtBR } from "@/lib/datetime";
 import { classificarCobranca, competenciaStr } from "@/lib/financeiro";
 import { DesativarAlunoButton } from "../_components/desativar-aluno-button";
 import { UsarReposicaoButton } from "../_components/usar-reposicao-button";
@@ -127,6 +128,10 @@ export default async function AlunoFichaPage({
   const concluidas = concluidasResult.count ?? 0;
   const faltas = faltasResult.count ?? 0;
   const reposicoes = reposicoesResult.data ?? [];
+  const hojeKey = spDayKey(now);
+  const reposicoesDisponiveis = reposicoes.filter(
+    (r) => r.expira_em == null || r.expira_em >= hojeKey,
+  ).length;
   const historicoSessoes = historicoResult.data ?? [];
   const totalHistorico = historicoResult.count ?? 0;
   const totalPaginasHistorico = Math.max(1, Math.ceil(totalHistorico / HISTORICO_PAGE_SIZE));
@@ -259,7 +264,7 @@ export default async function AlunoFichaPage({
         <div className="flex gap-2">
           <StatTile label="Este mês: aulas" value={aulasLabel} />
           <StatTile label="Faltas no mês" value={String(faltas)} />
-          <StatTile label="Reposições" value={String(reposicoes.length)} emphasis="blue" />
+          <StatTile label="Reposições" value={String(reposicoesDisponiveis)} emphasis="blue" />
         </div>
 
         <section className="flex flex-col gap-1 rounded-card border border-border bg-surface p-4">
@@ -282,20 +287,27 @@ export default async function AlunoFichaPage({
                 const origemData = credito.agendamento_origem
                   ? origemPorId.get(credito.agendamento_origem)
                   : null;
+                const expirado = credito.expira_em != null && credito.expira_em < hojeKey;
                 return (
                   <div
                     key={credito.id}
-                    className="flex items-center justify-between gap-3 rounded-card border border-border px-3 py-2"
+                    className={`flex items-center justify-between gap-3 rounded-card border border-border px-3 py-2 ${
+                      expirado ? "opacity-60" : ""
+                    }`}
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
                         Origem: {origemData ? formatDataHoraCurta(origemData) : "-"}
                       </p>
                       <p className="truncate text-xs text-fg-muted">
-                        Expira em: {credito.expira_em ? formatDateBR(credito.expira_em) : "-"}
+                        Expira em: {credito.expira_em ? formatIsoDatePtBR(credito.expira_em) : "-"}
                       </p>
                     </div>
-                    <UsarReposicaoButton creditoId={credito.id} />
+                    {expirado ? (
+                      <Pill color="red">Expirado</Pill>
+                    ) : (
+                      <UsarReposicaoButton creditoId={credito.id} />
+                    )}
                   </div>
                 );
               })}

@@ -15,6 +15,7 @@ import {
   spDayKey,
 } from "@/lib/datetime";
 import { formatCurrencyBRL, planoResumo } from "@/lib/format";
+import { classificarCobranca, diaVencimentoEfetivo } from "@/lib/financeiro";
 
 export default async function HojePage() {
   const supabase = await createClient();
@@ -88,11 +89,19 @@ export default async function HojePage() {
   const alunos = alunosResult.data ?? [];
   const alunosPorId = new Map(alunos.map((a) => [a.id, a]));
 
-  // Candidates whose due date has arrived this month (today or earlier) —
-  // covers both "vencendo hoje" and "em atraso".
-  const candidatosCobranca = alunos.filter(
-    (a) => a.dia_vencimento != null && a.dia_vencimento <= today.day,
-  );
+  // Candidates whose *effective* due date (clamped to the month's actual
+  // length — e.g. dia_vencimento 31 lands on the 28th/30th in short months)
+  // has arrived this month (today or earlier) — covers both "vencendo
+  // hoje" and "em atraso". Using diaVencimentoEfetivo here (instead of
+  // comparing the raw dia_vencimento, which can exceed the number of days
+  // in the current month) keeps this consistent with the Financeiro page.
+  const candidatosCobranca = alunos
+    .filter((a) => a.dia_vencimento != null)
+    .map((a) => ({
+      aluno: a,
+      diaEfetivo: diaVencimentoEfetivo(a.dia_vencimento!, today.year, today.month),
+    }))
+    .filter(({ diaEfetivo }) => diaEfetivo <= today.day);
 
   let pagosNaCompetencia = new Set<string>();
   if (candidatosCobranca.length > 0) {
@@ -104,18 +113,27 @@ export default async function HojePage() {
       .not("data_pagamento", "is", null)
       .in(
         "aluno_id",
-        candidatosCobranca.map((a) => a.id),
+        candidatosCobranca.map(({ aluno }) => aluno.id),
       );
 
     pagosNaCompetencia = new Set((pagamentos ?? []).map((p) => p.aluno_id));
   }
 
-  const vencendoHoje = candidatosCobranca.filter(
-    (a) => a.dia_vencimento === today.day && !pagosNaCompetencia.has(a.id),
-  );
-  const inadimplentes = candidatosCobranca
-    .filter((a) => a.dia_vencimento! < today.day && !pagosNaCompetencia.has(a.id))
-    .map((a) => ({ aluno: a, diasAtraso: today.day - a.dia_vencimento! }));
+  const vencendoHoje: typeof alunos = [];
+  const inadimplentes: { aluno: (typeof alunos)[number]; diasAtraso: number }[] = [];
+
+  for (const { aluno } of candidatosCobranca) {
+    if (pagosNaCompetencia.has(aluno.id)) continue;
+    const { status, diasAtraso } = classificarCobranca({
+      hoje: today,
+      diaVencimento: aluno.dia_vencimento,
+      ano: today.year,
+      mes: today.month,
+      pago: false,
+    });
+    if (status === "pendente") vencendoHoje.push(aluno);
+    else if (status === "atrasado") inadimplentes.push({ aluno, diasAtraso });
+  }
 
   const aReceberHoje = vencendoHoje.reduce((sum, a) => sum + (a.valor_mensal ?? 0), 0);
 

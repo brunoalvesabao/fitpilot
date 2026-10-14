@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import { login, type AuthState } from "./actions";
 
 const initialState: AuthState = { error: null };
@@ -10,7 +11,16 @@ const inputClasses =
   "h-touch rounded-card border border-border bg-surface px-4 text-fg placeholder:text-fg-faint focus:outline-none focus:ring-2 focus:ring-primary";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const [state, formAction, pending] = useActionState(login, initialState);
+  const redirectTo = useSearchParams().get("redirectTo") ?? "";
 
   return (
     <div className="flex flex-1 flex-col justify-center px-6 py-12">
@@ -21,6 +31,7 @@ export default function LoginPage() {
         </p>
 
         <form action={formAction} className="mt-8 flex flex-col gap-4">
+          <input type="hidden" name="redirectTo" value={redirectTo} />
           <div className="flex flex-col gap-1.5">
             <label htmlFor="email" className="text-sm text-fg-muted">
               Email

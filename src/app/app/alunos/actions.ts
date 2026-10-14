@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { spParts } from "@/lib/datetime";
+import { spDayKey, spParts } from "@/lib/datetime";
 import { competenciaStr, derivarStatusAluno } from "@/lib/financeiro";
 import type { DiaSemana } from "@/types/database";
 import type { FormState } from "./form-state";
@@ -220,11 +220,15 @@ export async function usarReposicao(creditoId: string): Promise<void> {
 
   const { data: credito } = await supabase
     .from("credito_reposicao")
-    .select("aluno_id")
+    .select("aluno_id, expira_em, usado")
     .eq("id", creditoId)
     .maybeSingle();
 
-  if (!credito) return;
+  if (!credito || credito.usado) return;
+
+  // Defense in depth: the UI already hides/disables this for expired
+  // credits, but never trust the client for a business rule like this.
+  if (credito.expira_em != null && credito.expira_em < spDayKey(new Date())) return;
 
   const { data: aluno } = await supabase
     .from("aluno")
