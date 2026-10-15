@@ -2,8 +2,8 @@ import { AlunoTabBar } from "./_components/aluno-tab-bar";
 
 export default function AlunoPortalLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col">
-      <main className="pb-[calc(env(safe-area-inset-bottom)+88px)]">{children}</main>
+    <div className="flex h-full flex-col overflow-hidden">
+      <main className="flex-1 overflow-y-auto">{children}</main>
       <AlunoTabBar />
     </div>
   );

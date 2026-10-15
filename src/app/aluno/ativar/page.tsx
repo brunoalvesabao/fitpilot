@@ -22,7 +22,7 @@ export default async function AtivarAlunoPage({
   }
 
   return (
-    <div className="flex min-h-dvh flex-col justify-center px-6 py-12">
+    <div className="flex h-full flex-col justify-center overflow-y-auto px-6 py-12">
       <div className="mx-auto w-full max-w-sm">
         <h1 className="text-2xl font-semibold">Olá, {nomeAluno}!</h1>
         <p className="mt-1 text-sm text-fg-muted">
@@ -36,7 +36,7 @@ export default async function AtivarAlunoPage({
 
 function ConviteInvalido() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
+    <div className="flex h-full flex-col items-center justify-center overflow-y-auto px-6 text-center">
       <h1 className="text-xl font-semibold">Link inválido</h1>
       <p className="mt-2 text-sm text-fg-muted">
         Este convite não existe mais ou já foi usado — cada link só funciona uma vez.

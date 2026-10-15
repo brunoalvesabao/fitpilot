@@ -18,7 +18,7 @@ export function BottomTabBar({ mostrarFinanceiro = true }: { mostrarFinanceiro?:
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 w-full border-t backdrop-blur-md"
+      className="w-full shrink-0 border-t backdrop-blur-md"
       style={{
         borderTopColor: "rgba(255,255,255,0.08)",
         backgroundColor: "rgba(12,13,16,0.92)",

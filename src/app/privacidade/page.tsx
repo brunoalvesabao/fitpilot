@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function PrivacidadePage() {
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex h-full flex-col overflow-hidden">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-2">
         <Link
           href="/cadastro"

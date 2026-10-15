@@ -24,7 +24,7 @@ function AlunoLoginForm() {
   const contaCriada = searchParams.get("criado") === "1";
 
   return (
-    <div className="flex min-h-dvh flex-col justify-center px-6 py-12">
+    <div className="flex h-full flex-col justify-center overflow-y-auto px-6 py-12">
       <div className="mx-auto w-full max-w-sm">
         <h1 className="text-2xl font-semibold">Entrar</h1>
         <p className="mt-1 text-sm text-fg-muted">Acesse o app do seu treino</p>

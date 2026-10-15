@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ViewportHeightFix } from "@/components/viewport-height-fix";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -48,20 +49,23 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} dark antialiased`}
     >
       {/*
-        Sem altura forçada (nem h-full nem h-dvh) de propósito: no modo
-        standalone do iOS, forçar a altura da página pra bater com a
-        viewport inteira cria uma rolagem fantasma em páginas curtas (o
-        valor "assentado" pelo iOS muda sutilmente depois do primeiro
-        gesto de rolagem). Deixando altura natural, a página só rola se
-        o conteúdo realmente precisar — o CSS já estende a cor de fundo
-        do body pra tela toda mesmo quando o conteúdo é mais curto que
-        ela. As barras de abas continuam fixas (position: fixed), o que
-        não depende da altura do documento.
+        A altura vem de --app-height (medida em JS com window.innerHeight,
+        ver ViewportHeightFix) em vez de 100dvh puro: no modo standalone do
+        iOS, o valor inicial de 100dvh pode vir maior do que a viewport
+        "assentada" final, só corrigindo depois do primeiro resize/gesto —
+        isso criava um espaço vazio (ou bounce) embaixo de telas com shell
+        de altura fixa. overflow-hidden aqui: o body nunca rola sozinho,
+        quem rola é a área de conteúdo dentro de cada shell (ver
+        app/layout.tsx e aluno/(portal)/layout.tsx).
       */}
       <body
-        className="flex flex-col bg-bg text-fg"
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
+        className="flex flex-col overflow-hidden bg-bg text-fg"
+        style={{
+          height: "var(--app-height, 100dvh)",
+          paddingTop: "env(safe-area-inset-top)",
+        }}
       >
+        <ViewportHeightFix />
         {children}
       </body>
     </html>

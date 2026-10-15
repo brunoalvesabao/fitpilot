@@ -28,8 +28,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const configModulos = user ? await getConfigModulos(supabase, user.id) : null;
 
   return (
-    <div className="flex flex-col">
-      <main className="pb-[calc(env(safe-area-inset-bottom)+88px)]">{children}</main>
+    <div className="flex h-full flex-col overflow-hidden">
+      <main className="flex-1 overflow-y-auto">{children}</main>
       <BottomTabBar mostrarFinanceiro={configModulos?.modulo_financeiro ?? true} />
     </div>
   );
