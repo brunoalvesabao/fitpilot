@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Sparkles } from "lucide-react";
 import { SegmentedControl } from "@/components/segmented-control";
 import { StudentRow, type AlunoListItem } from "@/components/student-row";
 
@@ -62,8 +62,19 @@ export function AlunosListClient({
   return (
     <div className="flex flex-1 flex-col">
       <div className="px-4 pb-4 pt-6">
-        <h1 className="text-xl font-semibold">Alunos</h1>
-        <p className="mt-0.5 text-sm text-fg-muted">{ativosCount} ativos</p>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <h1 className="text-xl font-semibold">Alunos</h1>
+            <p className="mt-0.5 text-sm text-fg-muted">{ativosCount} ativos</p>
+          </div>
+          <Link
+            href="/app/alunos/importar"
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-fg-muted"
+          >
+            <Sparkles className="size-3.5" aria-hidden />
+            Importar com IA
+          </Link>
+        </div>
 
         <div className="mt-4 flex items-center gap-2 rounded-card border border-border bg-surface px-3">
           <Search className="size-4 shrink-0 text-fg-faint" aria-hidden />
@@ -89,6 +100,9 @@ export function AlunosListClient({
             className="flex h-touch items-center justify-center rounded-card bg-primary px-5 font-medium text-bg"
           >
             Adicionar primeiro aluno
+          </Link>
+          <Link href="/app/alunos/importar" className="text-sm font-medium text-fg-muted">
+            ou importar vários de uma vez com IA
           </Link>
         </div>
       ) : filtrados.length === 0 ? (
