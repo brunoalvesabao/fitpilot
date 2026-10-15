@@ -21,6 +21,8 @@ export type StatusAluno =
   | "ex_aluno"
   | "lead";
 
+export type StatusVaga = "aberta" | "reservada" | "cancelada";
+
 // NOTE: these are `type` aliases, not `interface` declarations, on purpose —
 // interfaces don't structurally satisfy the `Record<string, unknown>` shape
 // that the Supabase query builder generics expect for Row/Insert/Update.
@@ -48,6 +50,8 @@ export type Aluno = {
   observacoes: string | null;
   ativo: boolean; // soft delete flag
   criado_em: string;
+  auth_user_id: UUID | null; // vincula ao login do app do aluno, quando ativado
+  convite_token: UUID | null; // token de convite pendente (null depois de ativado)
 };
 
 export type HorarioFixo = {
@@ -114,6 +118,27 @@ export type Bloqueio = {
   motivo: string | null;
 };
 
+export type VagaReposicao = {
+  id: UUID;
+  profissional_id: UUID;
+  data_hora: string; // ISO timestamp
+  duracao_min: number;
+  local: string | null;
+  origem_agendamento_id: UUID | null;
+  status: StatusVaga;
+  aluno_reservou_id: UUID | null;
+  criado_em: string;
+};
+
+export type InscricaoPush = {
+  id: UUID;
+  aluno_id: UUID;
+  endpoint: string;
+  p256dh: string;
+  auth_key: string;
+  criado_em: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -173,9 +198,32 @@ export type Database = {
         Update: Partial<Bloqueio>;
         Relationships: [];
       };
+      vaga_reposicao: {
+        Row: VagaReposicao;
+        Insert: Partial<VagaReposicao> &
+          Pick<VagaReposicao, "profissional_id" | "data_hora" | "duracao_min">;
+        Update: Partial<VagaReposicao>;
+        Relationships: [];
+      };
+      inscricao_push: {
+        Row: InscricaoPush;
+        Insert: Partial<InscricaoPush> &
+          Pick<InscricaoPush, "aluno_id" | "endpoint" | "p256dh" | "auth_key">;
+        Update: Partial<InscricaoPush>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      aluno_reservar_vaga: {
+        Args: { p_vaga_id: UUID };
+        Returns: void;
+      };
+      convite_valido: {
+        Args: { p_token: UUID };
+        Returns: { nome: string }[];
+      };
+    };
     Enums: Record<string, never>;
   };
 };

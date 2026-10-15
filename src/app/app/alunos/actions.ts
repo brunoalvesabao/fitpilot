@@ -392,3 +392,34 @@ export async function recalcularStatusAlunos(): Promise<void> {
   revalidatePath("/app/financeiro");
   revalidatePath("/app/hoje");
 }
+
+export async function gerarConviteAluno(
+  alunoId: string,
+): Promise<{ success: boolean; token?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false };
+
+  const { data: aluno } = await supabase
+    .from("aluno")
+    .select("id, auth_user_id")
+    .eq("id", alunoId)
+    .eq("profissional_id", user.id)
+    .maybeSingle();
+
+  if (!aluno) return { success: false };
+  if (aluno.auth_user_id) return { success: false };
+
+  const token = crypto.randomUUID();
+
+  const { error } = await supabase
+    .from("aluno")
+    .update({ convite_token: token })
+    .eq("id", alunoId);
+
+  if (error) return { success: false };
+
+  return { success: true, token };
+}

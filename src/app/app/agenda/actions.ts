@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { startOfSpDay, spDateTimeToUtc, spWeekday } from "@/lib/datetime";
+import { startOfSpDay, spDateTimeToUtc, spWeekday, spDayKey } from "@/lib/datetime";
+import { enviarPush } from "@/lib/push";
 import type { FormState } from "./form-state";
 import type { StatusAgendamento } from "@/types/database";
 
@@ -152,16 +153,30 @@ export async function setAgendamentoStatus(
 
   if (error) return;
 
-  // The DB trigger creates the reposição credit when status becomes
-  // cancelado_com_aviso — we never insert it ourselves. But if we're
-  // moving AWAY from cancelado_com_aviso (undo, or correcting to another
-  // status), the credit it generated is no longer valid unless already used.
+  // The DB trigger creates the reposição credit (and abre uma vaga de
+  // reposição) quando o status vira cancelado_com_aviso — nunca inserimos
+  // isso aqui. Mas se estamos saindo DE cancelado_com_aviso (desfazer, ou
+  // corrigir pra outro status), o crédito e a vaga que ele gerou deixam de
+  // valer, a menos que já tenham sido usados/reservados.
   if (agendamento.status === "cancelado_com_aviso" && novoStatus !== "cancelado_com_aviso") {
     await supabase
       .from("credito_reposicao")
       .delete()
       .eq("agendamento_origem", agendamentoId)
       .eq("usado", false);
+
+    await supabase
+      .from("vaga_reposicao")
+      .delete()
+      .eq("origem_agendamento_id", agendamentoId)
+      .eq("status", "aberta");
+  }
+
+  // Acabou de virar cancelado_com_aviso agora: a vaga que o gatilho acabou
+  // de abrir já existe nesta altura (o UPDATE acima já rodou e commitou o
+  // efeito do gatilho). Avisa por push quem tem reposição pendente.
+  if (novoStatus === "cancelado_com_aviso" && agendamento.status !== "cancelado_com_aviso") {
+    await notificarVagaAberta(user.id);
   }
 
   revalidatePath("/app/hoje");
@@ -320,4 +335,60 @@ export async function deleteAgendamento(agendamentoId: string): Promise<void> {
 
   revalidatePath("/app/hoje");
   revalidatePath("/app/agenda");
+}
+
+/**
+ * Avisa por push os alunos deste profissional que têm crédito de
+ * reposição disponível — é esse grupo que pode reivindicar a vaga que
+ * acabou de abrir (ver política "vaga_reposicao_aluno_elegivel" no banco).
+ * Falhas de envio são apenas logadas: nunca devem quebrar o cancelamento.
+ */
+async function notificarVagaAberta(profissionalId: string): Promise<void> {
+  const supabase = await createClient();
+
+  const { data: alunosDoProfissional } = await supabase
+    .from("aluno")
+    .select("id")
+    .eq("profissional_id", profissionalId);
+
+  const alunoIds = (alunosDoProfissional ?? []).map((a) => a.id);
+  if (alunoIds.length === 0) return;
+
+  const hojeKey = spDayKey(new Date());
+  const { data: creditos } = await supabase
+    .from("credito_reposicao")
+    .select("aluno_id, expira_em")
+    .in("aluno_id", alunoIds)
+    .eq("usado", false);
+
+  const elegiveisIds = [
+    ...new Set(
+      (creditos ?? [])
+        .filter((c) => c.expira_em == null || c.expira_em >= hojeKey)
+        .map((c) => c.aluno_id),
+    ),
+  ];
+  if (elegiveisIds.length === 0) return;
+
+  const { data: inscricoes } = await supabase
+    .from("inscricao_push")
+    .select("endpoint, p256dh, auth_key")
+    .in("aluno_id", elegiveisIds);
+
+  if (!inscricoes || inscricoes.length === 0) return;
+
+  const payload = {
+    title: "Vaga de reposição liberada",
+    body: "Abriu um horário com o seu professor. Toque pra ver e reservar.",
+    url: "/aluno/inicio",
+  };
+
+  await Promise.all(
+    inscricoes.map((i) =>
+      enviarPush(
+        { endpoint: i.endpoint, keys: { p256dh: i.p256dh, auth: i.auth_key } },
+        payload,
+      ).catch((err) => console.error("Falha ao enviar push de vaga aberta:", err)),
+    ),
+  );
 }

@@ -46,6 +46,10 @@ export async function updateSession(request: NextRequest) {
   const isProtectedRoute = pathname.startsWith("/app");
   const isAuthRoute = pathname === "/login" || pathname === "/cadastro";
 
+  const isAlunoRoute = pathname.startsWith("/aluno");
+  const isAlunoPublicRoute = pathname === "/aluno/login" || pathname === "/aluno/ativar";
+  const isAlunoProtectedRoute = isAlunoRoute && !isAlunoPublicRoute;
+
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -56,6 +60,20 @@ export async function updateSession(request: NextRequest) {
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/app/hoje";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  if (!user && isAlunoProtectedRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/aluno/login";
+    url.searchParams.set("redirectTo", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  if (user && pathname === "/aluno/login") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/aluno/inicio";
     url.search = "";
     return NextResponse.redirect(url);
   }

@@ -15,6 +15,7 @@ import { DesativarAlunoButton } from "../_components/desativar-aluno-button";
 import { ExportarDadosButton } from "../_components/exportar-dados-button";
 import { ExcluirAlunoButton } from "../_components/excluir-aluno-button";
 import { UsarReposicaoButton } from "../_components/usar-reposicao-button";
+import { ConvidarAlunoButton } from "../_components/convidar-aluno-button";
 import { PagamentosList, type LinhaPagamentoMes } from "../_components/pagamentos-list";
 import type { StatusAgendamento } from "@/types/database";
 
@@ -69,7 +70,9 @@ export default async function AlunoFichaPage({
 
   const alunoResult = await supabase
     .from("aluno")
-    .select("id, nome, telefone, foto_url, valor_mensal, dia_vencimento, aulas_por_mes, observacoes, criado_em")
+    .select(
+      "id, nome, telefone, foto_url, valor_mensal, dia_vencimento, aulas_por_mes, observacoes, criado_em, auth_user_id",
+    )
     .eq("id", id)
     .eq("profissional_id", user.id)
     .maybeSingle();
@@ -394,6 +397,11 @@ export default async function AlunoFichaPage({
         </section>
 
         <div className="flex flex-col items-center gap-2 pb-4 pt-2">
+          {aluno.auth_user_id ? (
+            <p className="text-sm text-fg-muted">Este aluno já acessa o app dele.</p>
+          ) : (
+            <ConvidarAlunoButton alunoId={aluno.id} />
+          )}
           <DesativarAlunoButton alunoId={aluno.id} />
           <ExportarDadosButton alunoId={aluno.id} alunoNome={aluno.nome} />
           <ExcluirAlunoButton alunoId={aluno.id} alunoNome={aluno.nome} />
