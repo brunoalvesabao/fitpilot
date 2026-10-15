@@ -31,3 +31,15 @@ export async function salvarInscricaoPush(subscription: {
 
   return { success: !error };
 }
+
+export async function removerInscricaoPush(endpoint: string): Promise<{ success: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false };
+
+  const { error } = await supabase.from("inscricao_push").delete().eq("endpoint", endpoint);
+
+  return { success: !error };
+}

@@ -45,10 +45,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} dark h-dvh antialiased`}
     >
       <body
-        className="min-h-full flex flex-col bg-bg text-fg"
+        className="h-dvh flex flex-col bg-bg text-fg"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         {children}
