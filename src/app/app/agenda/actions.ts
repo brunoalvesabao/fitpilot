@@ -116,9 +116,12 @@ export async function generateUpcomingAgendamentos(): Promise<void> {
     }));
 
   if (novos.length > 0) {
+    // No revalidatePath here: this function only ever runs inline during
+    // HojePage's own render (not as a Server Action triggered by a user
+    // action), and the page reads fresh data in the same request right
+    // after this insert — revalidating is both unsupported in that
+    // context and redundant.
     await supabase.from("agendamento").insert(novos);
-    revalidatePath("/app/hoje");
-    revalidatePath("/app/agenda");
   }
 }
 
