@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { generateUpcomingAgendamentos } from "../agenda/actions";
@@ -16,6 +17,7 @@ import {
 } from "@/lib/datetime";
 import { formatCurrencyBRL, planoResumo } from "@/lib/format";
 import { classificarCobranca, diaVencimentoEfetivo } from "@/lib/financeiro";
+import { getConfigModulos } from "@/lib/config-modulos";
 
 export default async function HojePage() {
   const supabase = await createClient();
@@ -31,6 +33,11 @@ export default async function HojePage() {
         </p>
       </div>
     );
+  }
+
+  const configModulos = await getConfigModulos(supabase, user.id);
+  if (!configModulos.configurado) {
+    redirect("/app/onboarding");
   }
 
   await generateUpcomingAgendamentos();
@@ -89,53 +96,56 @@ export default async function HojePage() {
   const alunos = alunosResult.data ?? [];
   const alunosPorId = new Map(alunos.map((a) => [a.id, a]));
 
-  // Candidates whose *effective* due date (clamped to the month's actual
-  // length — e.g. dia_vencimento 31 lands on the 28th/30th in short months)
-  // has arrived this month (today or earlier) — covers both "vencendo
-  // hoje" and "em atraso". Using diaVencimentoEfetivo here (instead of
-  // comparing the raw dia_vencimento, which can exceed the number of days
-  // in the current month) keeps this consistent with the Financeiro page.
-  const candidatosCobranca = alunos
-    .filter((a) => a.dia_vencimento != null)
-    .map((a) => ({
-      aluno: a,
-      diaEfetivo: diaVencimentoEfetivo(a.dia_vencimento!, today.year, today.month),
-    }))
-    .filter(({ diaEfetivo }) => diaEfetivo <= today.day);
-
-  let pagosNaCompetencia = new Set<string>();
-  if (candidatosCobranca.length > 0) {
-    const { data: pagamentos } = await supabase
-      .from("pagamento")
-      .select("aluno_id")
-      .eq("profissional_id", user.id)
-      .eq("competencia", competenciaAtual)
-      .not("data_pagamento", "is", null)
-      .in(
-        "aluno_id",
-        candidatosCobranca.map(({ aluno }) => aluno.id),
-      );
-
-    pagosNaCompetencia = new Set((pagamentos ?? []).map((p) => p.aluno_id));
-  }
-
   const vencendoHoje: typeof alunos = [];
   const inadimplentes: { aluno: (typeof alunos)[number]; diasAtraso: number }[] = [];
+  let aReceberHoje = 0;
 
-  for (const { aluno } of candidatosCobranca) {
-    if (pagosNaCompetencia.has(aluno.id)) continue;
-    const { status, diasAtraso } = classificarCobranca({
-      hoje: today,
-      diaVencimento: aluno.dia_vencimento,
-      ano: today.year,
-      mes: today.month,
-      pago: false,
-    });
-    if (status === "pendente") vencendoHoje.push(aluno);
-    else if (status === "atrasado") inadimplentes.push({ aluno, diasAtraso });
+  if (configModulos.modulo_financeiro) {
+    // Candidates whose *effective* due date (clamped to the month's actual
+    // length — e.g. dia_vencimento 31 lands on the 28th/30th in short months)
+    // has arrived this month (today or earlier) — covers both "vencendo
+    // hoje" and "em atraso". Using diaVencimentoEfetivo here (instead of
+    // comparing the raw dia_vencimento, which can exceed the number of days
+    // in the current month) keeps this consistent with the Financeiro page.
+    const candidatosCobranca = alunos
+      .filter((a) => a.dia_vencimento != null)
+      .map((a) => ({
+        aluno: a,
+        diaEfetivo: diaVencimentoEfetivo(a.dia_vencimento!, today.year, today.month),
+      }))
+      .filter(({ diaEfetivo }) => diaEfetivo <= today.day);
+
+    let pagosNaCompetencia = new Set<string>();
+    if (candidatosCobranca.length > 0) {
+      const { data: pagamentos } = await supabase
+        .from("pagamento")
+        .select("aluno_id")
+        .eq("profissional_id", user.id)
+        .eq("competencia", competenciaAtual)
+        .not("data_pagamento", "is", null)
+        .in(
+          "aluno_id",
+          candidatosCobranca.map(({ aluno }) => aluno.id),
+        );
+
+      pagosNaCompetencia = new Set((pagamentos ?? []).map((p) => p.aluno_id));
+    }
+
+    for (const { aluno } of candidatosCobranca) {
+      if (pagosNaCompetencia.has(aluno.id)) continue;
+      const { status, diasAtraso } = classificarCobranca({
+        hoje: today,
+        diaVencimento: aluno.dia_vencimento,
+        ano: today.year,
+        mes: today.month,
+        pago: false,
+      });
+      if (status === "pendente") vencendoHoje.push(aluno);
+      else if (status === "atrasado") inadimplentes.push({ aluno, diasAtraso });
+    }
+
+    aReceberHoje = vencendoHoje.reduce((sum, a) => sum + (a.valor_mensal ?? 0), 0);
   }
-
-  const aReceberHoje = vencendoHoje.reduce((sum, a) => sum + (a.valor_mensal ?? 0), 0);
 
   const sessoes: SessaoDia[] = (sessoesResult.data ?? []).map((s) => {
     const aluno = alunosPorId.get(s.aluno_id);
@@ -151,7 +161,8 @@ export default async function HojePage() {
     };
   });
 
-  const temAtencao = vencendoHoje.length > 0 || inadimplentes.length > 0;
+  const temAtencao =
+    configModulos.modulo_financeiro && (vencendoHoje.length > 0 || inadimplentes.length > 0);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -165,11 +176,13 @@ export default async function HojePage() {
       <div className="flex gap-2 px-4 py-3">
         <StatTile label="Aulas hoje" value={String(aulasHojeResult.count ?? 0)} />
         <StatTile label="Faltas no mês" value={String(faltasMesResult.count ?? 0)} />
-        <StatTile
-          label="A receber hoje"
-          value={formatCurrencyBRL(aReceberHoje)}
-          emphasis="blue"
-        />
+        {configModulos.modulo_financeiro && (
+          <StatTile
+            label="A receber hoje"
+            value={formatCurrencyBRL(aReceberHoje)}
+            emphasis="blue"
+          />
+        )}
       </div>
 
       {temAtencao && (

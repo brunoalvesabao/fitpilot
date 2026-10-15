@@ -4,15 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CalendarCheck, Users, Wallet, MoreHorizontal } from "lucide-react";
 
-const tabs = [
+const allTabs = [
   { href: "/app/hoje", label: "Hoje", icon: CalendarCheck },
   { href: "/app/alunos", label: "Alunos", icon: Users },
-  { href: "/app/financeiro", label: "Financeiro", icon: Wallet },
+  { href: "/app/financeiro", label: "Financeiro", icon: Wallet, requer: "financeiro" as const },
   { href: "/app/mais", label: "Mais", icon: MoreHorizontal },
 ];
 
-export function BottomTabBar() {
+export function BottomTabBar({ mostrarFinanceiro = true }: { mostrarFinanceiro?: boolean }) {
   const pathname = usePathname();
+  const tabs = allTabs.filter((tab) => tab.requer !== "financeiro" || mostrarFinanceiro);
 
   return (
     <nav
@@ -23,7 +24,10 @@ export function BottomTabBar() {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      <ul className="grid h-tabbar w-full grid-cols-4">
+      <ul
+        className="grid h-tabbar w-full"
+        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+      >
         {tabs.map(({ href, label, icon: Icon }) => {
           const isActive = pathname.startsWith(href);
           return (

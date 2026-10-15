@@ -10,7 +10,10 @@ import { statusBarColor } from "@/components/session-row";
 import { formatCurrencyBRL, formatDateBR, whatsappHref, telHref } from "@/lib/format";
 import { spParts, spDayKey, startOfSpMonth, formatMesAnoPtBR, formatIsoDatePtBR } from "@/lib/datetime";
 import { classificarCobranca, competenciaStr } from "@/lib/financeiro";
+import { getConfigModulos } from "@/lib/config-modulos";
 import { DesativarAlunoButton } from "../_components/desativar-aluno-button";
+import { ExportarDadosButton } from "../_components/exportar-dados-button";
+import { ExcluirAlunoButton } from "../_components/excluir-aluno-button";
 import { UsarReposicaoButton } from "../_components/usar-reposicao-button";
 import { PagamentosList, type LinhaPagamentoMes } from "../_components/pagamentos-list";
 import type { StatusAgendamento } from "@/types/database";
@@ -86,6 +89,8 @@ export default async function AlunoFichaPage({
     notFound();
   }
 
+  const configModulos = await getConfigModulos(supabase, user.id);
+
   const now = new Date();
   const { firstOfMonth, firstOfNextMonth } = currentMonthRange();
 
@@ -109,12 +114,14 @@ export default async function AlunoFichaPage({
       .eq("status", "falta")
       .gte("data_hora", firstOfMonth.toISOString())
       .lt("data_hora", firstOfNextMonth.toISOString()),
-    supabase
-      .from("credito_reposicao")
-      .select("id, agendamento_origem, expira_em, criado_em")
-      .eq("aluno_id", id)
-      .eq("usado", false)
-      .order("expira_em", { ascending: true, nullsFirst: false }),
+    configModulos.modulo_reposicao
+      ? supabase
+          .from("credito_reposicao")
+          .select("id, agendamento_origem, expira_em, criado_em")
+          .eq("aluno_id", id)
+          .eq("usado", false)
+          .order("expira_em", { ascending: true, nullsFirst: false })
+      : Promise.resolve({ data: [] as { id: string; agendamento_origem: string | null; expira_em: string | null; criado_em: string }[] }),
     supabase
       .from("agendamento")
       .select("id, data_hora, status", { count: "exact" })
@@ -264,7 +271,9 @@ export default async function AlunoFichaPage({
         <div className="flex gap-2">
           <StatTile label="Este mês: aulas" value={aulasLabel} />
           <StatTile label="Faltas no mês" value={String(faltas)} />
-          <StatTile label="Reposições" value={String(reposicoesDisponiveis)} emphasis="blue" />
+          {configModulos.modulo_reposicao && (
+            <StatTile label="Reposições" value={String(reposicoesDisponiveis)} emphasis="blue" />
+          )}
         </div>
 
         <section className="flex flex-col gap-1 rounded-card border border-border bg-surface p-4">
@@ -277,6 +286,7 @@ export default async function AlunoFichaPage({
           />
         </section>
 
+        {configModulos.modulo_reposicao && (
         <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">
           <h2 className="text-sm font-semibold">Reposições</h2>
           {reposicoes.length === 0 ? (
@@ -314,6 +324,7 @@ export default async function AlunoFichaPage({
             </div>
           )}
         </section>
+        )}
 
         <section className="flex flex-col gap-1 rounded-card border border-border bg-surface p-4">
           <h2 className="mb-2 text-sm font-semibold">Histórico de aulas</h2>
@@ -378,8 +389,10 @@ export default async function AlunoFichaPage({
           </p>
         </section>
 
-        <div className="flex justify-center pb-4 pt-2">
+        <div className="flex flex-col items-center gap-2 pb-4 pt-2">
           <DesativarAlunoButton alunoId={aluno.id} />
+          <ExportarDadosButton alunoId={aluno.id} alunoNome={aluno.nome} />
+          <ExcluirAlunoButton alunoId={aluno.id} alunoNome={aluno.nome} />
         </div>
       </div>
     </div>

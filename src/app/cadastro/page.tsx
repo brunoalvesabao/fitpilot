@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { signup, type AuthState } from "./actions";
 
 const initialState: AuthState = { error: null, message: null };
@@ -11,6 +11,7 @@ const inputClasses =
 
 export default function CadastroPage() {
   const [state, formAction, pending] = useActionState(signup, initialState);
+  const [aceitouTermos, setAceitouTermos] = useState(false);
 
   return (
     <div className="flex flex-1 flex-col justify-center px-6 py-12">
@@ -64,6 +65,26 @@ export default function CadastroPage() {
             />
           </div>
 
+          <label className="flex items-start gap-2.5 text-sm text-fg-muted">
+            <input
+              type="checkbox"
+              checked={aceitouTermos}
+              onChange={(event) => setAceitouTermos(event.target.checked)}
+              className="mt-0.5 size-4 shrink-0 accent-primary"
+            />
+            <span>
+              Li e concordo com os{" "}
+              <Link href="/termos" target="_blank" className="text-primary">
+                Termos de Uso
+              </Link>{" "}
+              e a{" "}
+              <Link href="/privacidade" target="_blank" className="text-primary">
+                Política de Privacidade
+              </Link>
+              .
+            </span>
+          </label>
+
           {state.error && <p className="text-sm text-red">{state.error}</p>}
           {state.message && (
             <p className="text-sm text-primary">{state.message}</p>
@@ -71,7 +92,7 @@ export default function CadastroPage() {
 
           <button
             type="submit"
-            disabled={pending}
+            disabled={pending || !aceitouTermos}
             className="mt-2 h-touch rounded-card bg-primary font-medium text-bg transition-opacity disabled:opacity-60"
           >
             {pending ? "Criando conta..." : "Criar conta"}

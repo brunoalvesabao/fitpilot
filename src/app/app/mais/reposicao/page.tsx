@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getConfigModulos } from "@/lib/config-modulos";
 import { ReposicaoConfigForm } from "./_components/reposicao-config-form";
 
 export default async function ConfigReposicaoPage() {
@@ -15,6 +17,11 @@ export default async function ConfigReposicaoPage() {
         </p>
       </div>
     );
+  }
+
+  const configModulos = await getConfigModulos(supabase, user.id);
+  if (!configModulos.modulo_reposicao) {
+    redirect("/app/mais");
   }
 
   const { data: config } = await supabase

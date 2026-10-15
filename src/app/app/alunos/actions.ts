@@ -211,6 +211,77 @@ export async function deactivateAluno(alunoId: string): Promise<void> {
   redirect("/app/alunos");
 }
 
+export async function exportarDadosAluno(
+  alunoId: string,
+): Promise<{ success: boolean; dados?: unknown }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false };
+
+  const { data: aluno } = await supabase
+    .from("aluno")
+    .select("*")
+    .eq("id", alunoId)
+    .eq("profissional_id", user.id)
+    .maybeSingle();
+
+  if (!aluno) return { success: false };
+
+  const [horarios, agendamentos, pagamentos, reposicoes] = await Promise.all([
+    supabase.from("horario_fixo").select("*").eq("aluno_id", alunoId),
+    supabase.from("agendamento").select("*").eq("aluno_id", alunoId),
+    supabase.from("pagamento").select("*").eq("aluno_id", alunoId),
+    supabase.from("credito_reposicao").select("*").eq("aluno_id", alunoId),
+  ]);
+
+  return {
+    success: true,
+    dados: {
+      exportado_em: new Date().toISOString(),
+      aluno,
+      horarios_fixos: horarios.data ?? [],
+      agendamentos: agendamentos.data ?? [],
+      pagamentos: pagamentos.data ?? [],
+      creditos_reposicao: reposicoes.data ?? [],
+    },
+  };
+}
+
+export async function excluirAlunoPermanentemente(alunoId: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: aluno } = await supabase
+    .from("aluno")
+    .select("id")
+    .eq("id", alunoId)
+    .eq("profissional_id", user.id)
+    .maybeSingle();
+
+  if (!aluno) {
+    redirect("/app/alunos");
+  }
+
+  // Apaga as tabelas dependentes primeiro — não há garantia de ON DELETE
+  // CASCADE configurado no banco, então a ordem importa aqui.
+  await supabase.from("credito_reposicao").delete().eq("aluno_id", alunoId);
+  await supabase.from("pagamento").delete().eq("aluno_id", alunoId);
+  await supabase.from("agendamento").delete().eq("aluno_id", alunoId);
+  await supabase.from("horario_fixo").delete().eq("aluno_id", alunoId);
+  await supabase.from("aluno").delete().eq("id", alunoId).eq("profissional_id", user.id);
+
+  revalidatePath("/app/alunos");
+  redirect("/app/alunos");
+}
+
 export async function usarReposicao(creditoId: string): Promise<void> {
   const supabase = await createClient();
   const {

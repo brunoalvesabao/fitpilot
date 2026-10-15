@@ -1,6 +1,8 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { spParts } from "@/lib/datetime";
 import { classificarCobranca, competenciaStr, diaVencimentoEfetivo } from "@/lib/financeiro";
+import { getConfigModulos } from "@/lib/config-modulos";
 import { FinanceiroClient, type LinhaFinanceiro } from "./_components/financeiro-client";
 
 export default async function FinanceiroPage({
@@ -22,6 +24,11 @@ export default async function FinanceiroPage({
         </p>
       </div>
     );
+  }
+
+  const configModulos = await getConfigModulos(supabase, user.id);
+  if (!configModulos.modulo_financeiro) {
+    redirect("/app/hoje");
   }
 
   const hoje = spParts(new Date());
