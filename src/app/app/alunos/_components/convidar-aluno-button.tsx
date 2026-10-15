@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { X, Copy, Check } from "lucide-react";
+import { X, Copy, Check, UserPlus } from "lucide-react";
 import { gerarConviteAluno } from "../actions";
 
 export function ConvidarAlunoButton({ alunoId }: { alunoId: string }) {
@@ -36,8 +36,9 @@ export function ConvidarAlunoButton({ alunoId }: { alunoId: string }) {
         type="button"
         disabled={pending}
         onClick={gerar}
-        className="h-touch text-sm font-medium text-fg-muted disabled:opacity-60"
+        className="flex h-touch items-center gap-2 rounded-full border border-primary px-4 text-sm font-semibold text-primary disabled:opacity-60"
       >
+        <UserPlus className="size-4" aria-hidden />
         {pending ? "Gerando link..." : "Convidar para o app do aluno"}
       </button>
 

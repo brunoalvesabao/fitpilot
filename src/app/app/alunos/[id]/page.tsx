@@ -396,12 +396,15 @@ export default async function AlunoFichaPage({
           </p>
         </section>
 
-        <div className="flex flex-col items-center gap-2 pb-4 pt-2">
+        <div className="flex flex-col items-center gap-2 pb-2 pt-2">
           {aluno.auth_user_id ? (
             <p className="text-sm text-fg-muted">Este aluno já acessa o app dele.</p>
           ) : (
             <ConvidarAlunoButton alunoId={aluno.id} />
           )}
+        </div>
+
+        <div className="flex flex-col items-center gap-2 pb-4 pt-2">
           <DesativarAlunoButton alunoId={aluno.id} />
           <ExportarDadosButton alunoId={aluno.id} alunoNome={aluno.nome} />
           <ExcluirAlunoButton alunoId={aluno.id} alunoNome={aluno.nome} />
