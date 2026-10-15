@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
-export type AtivarState = { error: string | null; message: string | null };
+export type AtivarState = { error: string | null };
 
 export async function ativarConvite(
   token: string,
@@ -15,7 +15,7 @@ export async function ativarConvite(
   const password = String(formData.get("password") ?? "");
 
   if (!token) {
-    return { error: "Link de convite inválido.", message: null };
+    return { error: "Link de convite inválido." };
   }
 
   const supabase = await createClient();
@@ -26,14 +26,17 @@ export async function ativarConvite(
   });
 
   if (error) {
-    return { error: error.message, message: null };
+    return { error: error.message };
   }
 
+  // Importante: sempre redirecionar em vez de devolver um estado de
+  // sucesso pra essa mesma página. O convite já foi consumido neste
+  // ponto (o gatilho de criação do usuário já rodou), então, se
+  // ficássemos aqui, o Server Component desta rota revalidaria e veria
+  // o token como inválido — mostrando "Link inválido" por cima da
+  // mensagem de sucesso que deveria aparecer.
   if (!data.session) {
-    return {
-      error: null,
-      message: "Conta criada! Confira seu email pra confirmar, depois é só entrar.",
-    };
+    redirect("/aluno/login?criado=1");
   }
 
   redirect("/aluno/inicio");

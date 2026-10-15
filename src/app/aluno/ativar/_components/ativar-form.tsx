@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { ativarConvite, type AtivarState } from "../actions";
 
-const initialState: AtivarState = { error: null, message: null };
+const initialState: AtivarState = { error: null };
 
 const inputClasses =
   "h-touch rounded-card border border-border bg-surface px-4 text-fg placeholder:text-fg-faint focus:outline-none focus:ring-2 focus:ring-primary";
@@ -11,10 +11,6 @@ const inputClasses =
 export function AtivarForm({ token, nomeAluno }: { token: string; nomeAluno: string }) {
   const action = ativarConvite.bind(null, token);
   const [state, formAction, pending] = useActionState(action, initialState);
-
-  if (state.message) {
-    return <p className="text-sm text-primary">{state.message}</p>;
-  }
 
   return (
     <form action={formAction} className="mt-6 flex flex-col gap-4">

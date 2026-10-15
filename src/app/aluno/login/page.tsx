@@ -19,13 +19,21 @@ export default function AlunoLoginPage() {
 
 function AlunoLoginForm() {
   const [state, formAction, pending] = useActionState(loginAluno, initialState);
-  const redirectTo = useSearchParams().get("redirectTo") ?? "";
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirectTo") ?? "";
+  const contaCriada = searchParams.get("criado") === "1";
 
   return (
     <div className="flex flex-1 flex-col justify-center px-6 py-12">
       <div className="mx-auto w-full max-w-sm">
         <h1 className="text-2xl font-semibold">Entrar</h1>
         <p className="mt-1 text-sm text-fg-muted">Acesse o app do seu treino</p>
+
+        {contaCriada && (
+          <p className="mt-4 rounded-card border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-primary">
+            Conta criada! Confira seu email e confirme o cadastro antes de entrar.
+          </p>
+        )}
 
         <form action={formAction} className="mt-8 flex flex-col gap-4">
           <input type="hidden" name="redirectTo" value={redirectTo} />
