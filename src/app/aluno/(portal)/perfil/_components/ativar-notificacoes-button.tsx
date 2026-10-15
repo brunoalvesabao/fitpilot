@@ -19,7 +19,13 @@ export function AtivarNotificacoesButton() {
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
 
-    navigator.serviceWorker.ready
+    // Precisa registrar aqui, não só checar — se o service worker nunca
+    // tiver sido registrado antes (primeira visita), "serviceWorker.ready"
+    // nunca resolve sozinho, e o botão ficaria escondido pra sempre mesmo
+    // em um dispositivo que suporta notificação. O registro é idempotente:
+    // se já existir, só devolve o registro existente.
+    navigator.serviceWorker
+      .register("/sw.js")
       .then((registration) => registration.pushManager.getSubscription())
       .then((subscription) => setEstado({ suportado: true, ativo: !!subscription }))
       .catch(() => setEstado((atual) => ({ ...atual, suportado: true })));
