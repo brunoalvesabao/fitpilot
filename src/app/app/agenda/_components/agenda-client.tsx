@@ -8,6 +8,7 @@ import { DatePicker } from "@/components/date-picker";
 import { formatIsoDatePtBR, spDayKey, spParts } from "@/lib/datetime";
 import { DayAgendaList, type SessaoDia } from "./day-agenda-list";
 import { AgendamentoSheet, type AgendamentoInicial } from "./agendamento-sheet";
+import { calcularSlotsLivres } from "@/lib/horarios-livres";
 
 type Visao = "dia" | "semana";
 
@@ -73,6 +74,7 @@ export function AgendaClient(
           data={props.data}
           emptyLabel="Nenhuma aula neste dia"
           antecedenciaHoras={props.antecedenciaHoras}
+          mostrarSlotsLivres
         />
       ) : (
         <WeekView data={props.data} alunos={props.alunos} dias={props.sessoesSemana} />
@@ -119,6 +121,10 @@ function WeekView({
           const [, , dayOfMonth] = dia.key.split("-").map(Number);
           const weekdayIndex = new Date(`${dia.key}T12:00:00Z`).getUTCDay();
           const isToday = dia.key === hoje;
+          const livres = calcularSlotsLivres(
+            dia.key,
+            dia.sessoes.map((s) => ({ dataHora: s.dataHora, duracaoMin: s.duracaoMin })),
+          );
 
           return (
             <div key={dia.key} className="flex flex-col gap-1">
@@ -142,6 +148,9 @@ function WeekView({
                   </button>
                 ))}
               </div>
+              {livres.length > 0 && (
+                <p className="text-center text-[10px] text-fg-faint">{livres.length} livre(s)</p>
+              )}
             </div>
           );
         })}

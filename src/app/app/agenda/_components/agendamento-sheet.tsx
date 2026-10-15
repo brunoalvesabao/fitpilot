@@ -36,11 +36,17 @@ export function AgendamentoSheet({
   alunos,
   initial,
   defaultData,
+  defaultHora,
+  defaultAlunoId,
+  onCreated,
 }: {
   onClose: () => void;
   alunos: { id: string; nome: string }[];
   initial?: AgendamentoInicial;
   defaultData?: string; // "YYYY-MM-DD", used for create when opened from a specific day
+  defaultHora?: string; // "HH:mm", used for create when opened from a specific free slot
+  defaultAlunoId?: string; // pre-seleciona o aluno (ex.: abrindo a partir da ficha dele)
+  onCreated?: () => void; // chamado após criar com sucesso, além de onClose
 }) {
   const [mode, setMode] = useState<"view" | "form">(initial ? "view" : "form");
 
@@ -82,7 +88,12 @@ export function AgendamentoSheet({
               alunos={alunos}
               initial={initial}
               defaultData={defaultData}
-              onSuccess={onClose}
+              defaultHora={defaultHora}
+              defaultAlunoId={defaultAlunoId}
+              onSuccess={() => {
+                onCreated?.();
+                onClose();
+              }}
             />
           )}
         </div>
@@ -158,20 +169,28 @@ function AgendamentoForm({
   alunos,
   initial,
   defaultData,
+  defaultHora,
+  defaultAlunoId,
   onSuccess,
 }: {
   alunos: { id: string; nome: string }[];
   initial?: AgendamentoInicial;
   defaultData?: string;
+  defaultHora?: string;
+  defaultAlunoId?: string;
   onSuccess: () => void;
 }) {
   const action = initial ? updateAgendamento.bind(null, initial.id) : createAgendamento;
   const [state, formAction, pending] = useActionState<FormState, FormData>(action, emptyFormState);
 
-  const [busca, setBusca] = useState(initial?.alunoNome ?? "");
-  const [alunoId, setAlunoId] = useState(initial?.alunoId ?? "");
+  const alunoPreSelecionado = defaultAlunoId
+    ? alunos.find((a) => a.id === defaultAlunoId)
+    : undefined;
+
+  const [busca, setBusca] = useState(initial?.alunoNome ?? alunoPreSelecionado?.nome ?? "");
+  const [alunoId, setAlunoId] = useState(initial?.alunoId ?? alunoPreSelecionado?.id ?? "");
   const [data, setData] = useState(initial?.data ?? defaultData ?? "");
-  const [hora, setHora] = useState(initial?.hora ?? "");
+  const [hora, setHora] = useState(initial?.hora ?? defaultHora ?? "");
   const [duracaoMin, setDuracaoMin] = useState(String(initial?.duracaoMin ?? 60));
   const [local, setLocal] = useState(initial?.local ?? "");
 

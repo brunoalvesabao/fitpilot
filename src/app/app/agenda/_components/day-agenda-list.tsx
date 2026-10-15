@@ -1,11 +1,12 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useMemo, useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { SessionRow } from "@/components/session-row";
 import { PeriodHeader } from "@/components/period-header";
 import { spParts } from "@/lib/datetime";
+import { calcularSlotsLivres, type SlotLivre } from "@/lib/horarios-livres";
 import { AgendamentoSheet, type AgendamentoInicial } from "./agendamento-sheet";
 import { FaltaSheet } from "./falta-sheet";
 import { setAgendamentoStatus } from "../actions";
@@ -31,6 +32,31 @@ function periodoDe(dataHora: string): "manha" | "tarde" | "noite" {
 
 const PERIODO_LABEL = { manha: "Manhã", tarde: "Tarde", noite: "Noite" } as const;
 
+type ItemDia =
+  | { tipo: "sessao"; inicioMs: number; sessao: SessaoDia }
+  | { tipo: "livre"; inicioMs: number; slot: SlotLivre };
+
+function SlotLivreRow({ slot, onClick }: { slot: SlotLivre; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-touch w-full items-center gap-3 border-b border-dashed border-border py-3 pl-4 pr-4 text-left"
+    >
+      <span className="w-12 shrink-0 font-mono text-sm tabular-nums text-fg-faint">
+        {slot.inicioLabel}
+      </span>
+      <span className="h-10 w-1 shrink-0 rounded-full border border-dashed border-fg-faint" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm text-fg-muted">
+          Livre até {slot.fimLabel} · encaixe um aluno novo ou reposição
+        </p>
+      </div>
+      <Plus className="size-4 shrink-0 text-fg-faint" aria-hidden />
+    </button>
+  );
+}
+
 export function DayAgendaList({
   sessoes,
   alunos,
@@ -38,6 +64,7 @@ export function DayAgendaList({
   emptyLabel = "Nenhuma aula hoje",
   title,
   antecedenciaHoras = null,
+  mostrarSlotsLivres = false,
 }: {
   sessoes: SessaoDia[];
   alunos: { id: string; nome: string }[];
@@ -45,9 +72,12 @@ export function DayAgendaList({
   emptyLabel?: string;
   title?: string;
   antecedenciaHoras?: number | null;
+  mostrarSlotsLivres?: boolean; // mostra os horários vagos do dia, pra encaixar aluno novo/reposição
 }) {
   const [sheet, setSheet] = useState<
-    { mode: "closed" } | { mode: "create" } | { mode: "view"; sessao: SessaoDia }
+    | { mode: "closed" }
+    | { mode: "create"; hora?: string }
+    | { mode: "view"; sessao: SessaoDia }
   >({ mode: "closed" });
   const [faltaSessao, setFaltaSessao] = useState<SessaoDia | null>(null);
   const [, startTransition] = useTransition();
@@ -57,14 +87,42 @@ export function DayAgendaList({
       state.map((s) => (s.id === update.id ? { ...s, status: update.status } : s)),
   );
 
-  const grupos: { periodo: "manha" | "tarde" | "noite"; sessoes: SessaoDia[] }[] = (
+  const slotsLivres = useMemo(
+    () =>
+      mostrarSlotsLivres
+        ? calcularSlotsLivres(
+            data,
+            sessoesOtimistas.map((s) => ({ dataHora: s.dataHora, duracaoMin: s.duracaoMin })),
+          )
+        : [],
+    [data, sessoesOtimistas, mostrarSlotsLivres],
+  );
+
+  const itens: ItemDia[] = [
+    ...sessoesOtimistas.map(
+      (sessao): ItemDia => ({
+        tipo: "sessao",
+        inicioMs: new Date(sessao.dataHora).getTime(),
+        sessao,
+      }),
+    ),
+    ...slotsLivres.map(
+      (slot): ItemDia => ({ tipo: "livre", inicioMs: new Date(slot.inicioISO).getTime(), slot }),
+    ),
+  ].sort((a, b) => a.inicioMs - b.inicioMs);
+
+  const grupos: { periodo: "manha" | "tarde" | "noite"; itens: ItemDia[] }[] = (
     ["manha", "tarde", "noite"] as const
   )
     .map((periodo) => ({
       periodo,
-      sessoes: sessoesOtimistas.filter((s) => periodoDe(s.dataHora) === periodo),
+      itens: itens.filter((item) => {
+        const dataHora =
+          item.tipo === "sessao" ? item.sessao.dataHora : item.slot.inicioISO;
+        return periodoDe(dataHora) === periodo;
+      }),
     }))
-    .filter((grupo) => grupo.sessoes.length > 0);
+    .filter((grupo) => grupo.itens.length > 0);
 
   const initial: AgendamentoInicial | undefined =
     sheet.mode === "view"
@@ -113,7 +171,7 @@ export function DayAgendaList({
         </div>
       )}
 
-      {sessoesOtimistas.length === 0 ? (
+      {itens.length === 0 ? (
         <div className="flex flex-1 items-center justify-center px-8 py-8 text-center">
           <p className="text-fg-muted">{emptyLabel}</p>
         </div>
@@ -122,18 +180,26 @@ export function DayAgendaList({
           {grupos.map((grupo) => (
             <div key={grupo.periodo}>
               <PeriodHeader label={PERIODO_LABEL[grupo.periodo]} />
-              {grupo.sessoes.map((sessao) => (
-                <SessionRow
-                  key={sessao.id}
-                  dataHora={sessao.dataHora}
-                  status={sessao.status}
-                  alunoNome={sessao.alunoNome}
-                  planoResumo={sessao.planoResumo}
-                  onClick={() => setSheet({ mode: "view", sessao })}
-                  onCheck={() => handleCheck(sessao)}
-                  onFalta={() => handleFaltaClick(sessao)}
-                />
-              ))}
+              {grupo.itens.map((item) =>
+                item.tipo === "sessao" ? (
+                  <SessionRow
+                    key={item.sessao.id}
+                    dataHora={item.sessao.dataHora}
+                    status={item.sessao.status}
+                    alunoNome={item.sessao.alunoNome}
+                    planoResumo={item.sessao.planoResumo}
+                    onClick={() => setSheet({ mode: "view", sessao: item.sessao })}
+                    onCheck={() => handleCheck(item.sessao)}
+                    onFalta={() => handleFaltaClick(item.sessao)}
+                  />
+                ) : (
+                  <SlotLivreRow
+                    key={item.slot.inicioISO}
+                    slot={item.slot}
+                    onClick={() => setSheet({ mode: "create", hora: item.slot.inicioLabel })}
+                  />
+                ),
+              )}
             </div>
           ))}
         </div>
@@ -151,11 +217,12 @@ export function DayAgendaList({
 
       {sheet.mode !== "closed" && (
         <AgendamentoSheet
-          key={sheet.mode === "view" ? sheet.sessao.id : "create"}
+          key={sheet.mode === "view" ? sheet.sessao.id : `create-${sheet.mode === "create" ? sheet.hora : ""}`}
           onClose={() => setSheet({ mode: "closed" })}
           alunos={alunos}
           initial={initial}
           defaultData={data}
+          defaultHora={sheet.mode === "create" ? sheet.hora : undefined}
         />
       )}
 

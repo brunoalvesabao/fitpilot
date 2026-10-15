@@ -316,7 +316,11 @@ export default async function AlunoFichaPage({
                     {expirado ? (
                       <Pill color="red">Expirado</Pill>
                     ) : (
-                      <UsarReposicaoButton creditoId={credito.id} />
+                      <UsarReposicaoButton
+                        creditoId={credito.id}
+                        alunoId={aluno.id}
+                        alunoNome={aluno.nome}
+                      />
                     )}
                   </div>
                 );

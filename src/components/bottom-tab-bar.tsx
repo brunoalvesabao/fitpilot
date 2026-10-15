@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarCheck, Users, Wallet, MoreHorizontal } from "lucide-react";
+import { CalendarCheck, CalendarRange, Users, Wallet, MoreHorizontal } from "lucide-react";
 
 const allTabs = [
   { href: "/app/hoje", label: "Hoje", icon: CalendarCheck },
+  { href: "/app/agenda", label: "Agenda", icon: CalendarRange },
   { href: "/app/alunos", label: "Alunos", icon: Users },
   { href: "/app/financeiro", label: "Financeiro", icon: Wallet, requer: "financeiro" as const },
   { href: "/app/mais", label: "Mais", icon: MoreHorizontal },
