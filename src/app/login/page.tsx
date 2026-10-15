@@ -23,7 +23,7 @@ function LoginForm() {
   const redirectTo = useSearchParams().get("redirectTo") ?? "";
 
   return (
-    <div className="flex flex-1 flex-col justify-center px-6 py-12">
+    <div className="flex min-h-dvh flex-col justify-center px-6 py-12">
       <div className="mx-auto w-full max-w-sm">
         <h1 className="text-2xl font-semibold">Entrar</h1>
         <p className="mt-1 text-sm text-fg-muted">

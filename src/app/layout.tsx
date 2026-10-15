@@ -45,10 +45,21 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} dark h-dvh antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} dark antialiased`}
     >
+      {/*
+        Sem altura forçada (nem h-full nem h-dvh) de propósito: no modo
+        standalone do iOS, forçar a altura da página pra bater com a
+        viewport inteira cria uma rolagem fantasma em páginas curtas (o
+        valor "assentado" pelo iOS muda sutilmente depois do primeiro
+        gesto de rolagem). Deixando altura natural, a página só rola se
+        o conteúdo realmente precisar — o CSS já estende a cor de fundo
+        do body pra tela toda mesmo quando o conteúdo é mais curto que
+        ela. As barras de abas continuam fixas (position: fixed), o que
+        não depende da altura do documento.
+      */}
       <body
-        className="h-dvh flex flex-col bg-bg text-fg"
+        className="flex flex-col bg-bg text-fg"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         {children}

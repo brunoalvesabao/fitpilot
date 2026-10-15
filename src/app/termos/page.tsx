@@ -7,7 +7,7 @@ export const metadata = {
 
 export default function TermosPage() {
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-h-dvh flex-col">
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-2">
         <Link
           href="/cadastro"
